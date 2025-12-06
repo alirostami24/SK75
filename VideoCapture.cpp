@@ -9,6 +9,8 @@ VideoCapture()
 GstFlowReturn
 VideoCapture::on_new_sample_from_sink(GstElement* sink, gpointer user_data)
 {
+    return GST_FLOW_OK;
+
     VideoCapture* videoCapture = static_cast<VideoCapture*>(user_data);
     GstSample* sample;
     GstCaps *caps;
@@ -77,7 +79,7 @@ initialize()
     QString pipestr = "rtspsrc location=rtsp://192.168.1.100/ch0/stream0 ! "
                       "application/x-rtp,media=video,clockrate=90000,"
                       "encoding-name=H264,payload=96 ! rtph264depay ! "
-                      "h264parse ! decodebin ! videoconvert ! tee name=t ! "
+                      "h264parse ! avdec_h264 ! videoconvert ! tee name=t ! "
                       "queue ! d3dvideosink sync=false name=mysink "
                       "force-aspect-ratio=false enable-navigation-events=false t. ! "
                       "queue ! appsink name=myfakesink sync=false";

@@ -1,4 +1,4 @@
-QT       += core gui serialport concurrent
+QT       += core gui serialport concurrent network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -17,7 +17,8 @@ PKGCONFIG += gstreamer-1.0 \
         gstreamer-video-1.0 \
         glib-2.0 \
         gobject-2.0 \
-        gio-2.0
+        gio-2.0 \
+        opencv
 
 # You can also make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -31,23 +32,25 @@ SOURCES += \
     SerialController.cpp \
     VideoCapture.cpp \
     main.cpp \
-    MainWindow.cpp
 
 HEADERS += \
     Controller.h \
-    MainWindow.h \
     SerialController.h \
     VideoCapture.h
-
-FORMS += \
-    MainWindow.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
-win32: LIBS += -L'C:/Program Files/OpenCV3.4.16/lib/' -lopencv_world3416
+win32 {
+    LIBS += -L'C:/Program Files/OpenCV3.4.16/lib/' -lopencv_world3416
 
-INCLUDEPATH += 'C:/Program Files/OpenCV3.4.16/include'
-DEPENDPATH += 'C:/Program Files/OpenCV3.4.16/include'
+    INCLUDEPATH += 'C:/Program Files/OpenCV3.4.16/include'
+    DEPENDPATH += 'C:/Program Files/OpenCV3.4.16/include'
+}
+
+unix:!macx: LIBS += -L$$PWD/ExternalLibraries/ControlPanelSDK/Linux/ -lControlPanelSDK
+
+INCLUDEPATH += $$PWD/ExternalLibraries/ControlPanelSDK/include
+DEPENDPATH += $$PWD/ExternalLibraries/ControlPanelSDK/include
