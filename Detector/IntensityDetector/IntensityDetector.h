@@ -100,8 +100,8 @@ private:
     bool m_isDetectorInitialized;
 
     std::vector<DetectionValidityInfo> m_allDetectionValidityInfo;
-    double m_autoLockDistanceThreshold;
-    int m_autoLockNumberOfDetectedThreshold;
+    double m_maxValidDistance;
+    int m_numberOfDetectedThreshold;
     cv::Rect2f m_validObjectRect;
 
 

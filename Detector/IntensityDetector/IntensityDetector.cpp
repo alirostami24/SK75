@@ -15,8 +15,8 @@ IntensityDetector::IntensityDetector() :
     m_inputRect = cv::Rect(0, 0, m_inputSize.width, m_inputSize.height);
     m_detectorSearchRect = cv::Rect(0, 0, m_inputSize.width, m_inputSize.height);
 
-    m_autoLockDistanceThreshold = 0.05 * std::min(m_inputSize.width, m_inputSize.height);
-    m_autoLockNumberOfDetectedThreshold = 3;
+    m_maxValidDistance = 0.05 * std::min(m_inputSize.width, m_inputSize.height);
+    m_numberOfDetectedThreshold = 3;
 }
 
 IntensityDetector::~IntensityDetector()
@@ -170,14 +170,14 @@ bool IntensityDetector::checkDetectValidity()
 
                     double distance = m_calculator->centerDistance(bbox, info.bbox);
 
-                    if (distance < m_autoLockDistanceThreshold)
+                    if (distance < m_maxValidDistance)
                     {
                         detectionValidityInfo.bbox = bbox;
                         detectionValidityInfo.numberOfDetected = info.numberOfDetected + 1;
                         newDetectionValidityInfo.push_back(detectionValidityInfo);
                         checkedDetections.at<uchar>(i, 0) = 1;
 
-                        if (detectionValidityInfo.numberOfDetected >= m_autoLockNumberOfDetectedThreshold)
+                        if (detectionValidityInfo.numberOfDetected >= m_numberOfDetectedThreshold)
                         {
                             double distanceOfCenter = m_calculator->centerDistance(m_detectorSearchRect, bbox);
                             if (distanceOfCenter < minDistanceOfCenter)
@@ -202,7 +202,7 @@ bool IntensityDetector::checkDetectValidity()
                m_allDetectionValidityInfo.clear();
 
                detectionValidityInfo.bbox = satisfiedAutoLockBBox;
-               detectionValidityInfo.numberOfDetected = m_autoLockNumberOfDetectedThreshold + 1;
+               detectionValidityInfo.numberOfDetected = m_numberOfDetectedThreshold + 1;
                m_allDetectionValidityInfo.push_back(detectionValidityInfo);
 
                m_validObjectRect.x = satisfiedAutoLockBBox.x;

@@ -2,7 +2,7 @@
 
 Detector::Detector()
 {
-    m_inputSize.width = 720;
+    m_inputSize.width = 640;
     m_inputSize.height = 512;
 
     m_scaleSize = 3;
