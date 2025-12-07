@@ -63,11 +63,8 @@ initialize()
         qCritical() << "Error String:" << errorString;
     }
 
-    qCritical() << endl;
-
-    //    m_videoCapture.setWindowID(windowsID);
-    //    m_videoCapture.initialize();
-    //    m_videoCapture.startCapture();
+    m_videoCapture.initialize();
+    m_videoCapture.setFrameSize(QSize(640, 512));
 }
 
 void Controller::
