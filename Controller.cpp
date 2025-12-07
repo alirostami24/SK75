@@ -1,9 +1,19 @@
 #include "Controller.h"
 
+const uint8_t SDK::gHeader1 = 0x54;
+const uint8_t SDK::gHeader2 = 0x4F;
+const uint8_t SDK::gFooter1 = 0x4E;
+const uint8_t SDK::gFooter2 = 0x45;
+
 Controller::
 Controller() :
-    m_controlPanelSDK(
-        CommunicationType_Serial),
+    m_panelSourceID_ByteIndex(2),
+    m_panelDestinationID_ByteIndex(3),
+    m_panelModuleID_ByteIndex(4),
+    m_panelCommandID_ByteIndex(5),
+    m_panelLengthByteIndex(6),
+    m_panelMinimumLength(11),
+    m_footerOffset(-1),
     m_feedbackSize(32)
 {
     initialize();
@@ -13,57 +23,91 @@ Controller() :
 void Controller::
 initialize()
 {
-    m_commandHeader.push_back(char(0xEB));
-    m_commandHeader.push_back(char(0x90));
+    m_panelHeader.append(char(SDK::gHeader1));
+    m_panelHeader.append(char(SDK::gHeader2));
 
-    m_feedbackHeader.push_back(char(0xEE));
-    m_feedbackHeader.push_back(char(0x16));
+    m_panelFooter.append(char(SDK::gFooter1));
+    m_panelFooter.append(char(SDK::gFooter2));
+
+    m_cameraCommandHeader.push_back(char(0xEB));
+    m_cameraCommandHeader.push_back(char(0x90));
+
+    m_cameraFeedbackHeader.push_back(char(0xEE));
+    m_cameraFeedbackHeader.push_back(char(0x16));
 
     bool isConnected;
     int32_t errorCode;
 
     // ======================================
-    //  Connect To Control Panel
+    //      Connect To Control Panel
     // ======================================
-    SerialInfo serialInfo;
-    serialInfo.setSerialPortName("ttyTHS1");
-    serialInfo.setBaudrate(9600);
+    isConnected = m_panelSerialController.
+            openConnection(
+                "ttyUSB0", 9600, errorCode);
 
-    isConnected = m_controlPanelSDK.
-            initialize(serialInfo, errorCode);
+    std::cerr << "===================================" << std::endl;
+    std::cerr << "Panel Serial Port Name: " <<
+                 m_panelSerialController.
+                 serialPortName().toStdString()
+              << std::endl;
 
-    qCritical() << "===================================" << endl;
-    qCritical() << "Control Panel Serial State:" <<
-                   (isConnected == true ? "Connected" : "Not Connected");
+    std::cerr << "Panel Serial Port Name: " <<
+                 m_panelSerialController.
+                 serialPortBaudrate() << std::endl;
+
+    std::cerr << "Panel Serial State: " <<
+                 (isConnected == true ?
+                      "Connected" :
+                      "Not Connected") << std::endl;
 
     if (isConnected == false)
     {
         const QString errorString =
                 parseSerialErrorCode(errorCode);
 
-        qCritical() << "Error String:" << errorString;
+        std::cerr << "Error String: "
+                  << errorString.toStdString() << std::endl;
     }
 
-    qCritical() << endl;
+    std::cerr << std::endl;
 
-    // Connect To Camera
-    isConnected = m_serialController.
+    // ======================================
+    //      Connect To Camera
+    // ======================================
+    isConnected = m_cameraSerialController.
             openConnection(
                 "ttyTHS0", 115200, errorCode);
 
-    qCritical() << "===================================" << endl;
-    qCritical() << "Camera Serial State:" <<
-                   (isConnected == true ? "Connected" : "Not Connected");
+    std::cerr << "===================================" << std::endl;
+    std::cerr << "Camera Serial Port Name: " <<
+                 m_cameraSerialController.
+                 serialPortName().toStdString() << std::endl;
+
+    std::cerr << "Camera Serial Port Name: " <<
+                 m_cameraSerialController.
+                 serialPortBaudrate() << std::endl;
+
+    std::cerr << "Camera Serial State: " <<
+                 (isConnected == true ?
+                      "Connected" :
+                      "Not Connected") << std::endl;
 
     if (isConnected == false)
     {
         const QString errorString =
                 parseSerialErrorCode(errorCode);
 
-        qCritical() << "Error String:" << errorString;
+        std::cerr << "Error String: "
+                  << errorString.toStdString() << std::endl;
     }
 
-    qCritical() << endl;
+    std::cerr << std::endl;
+
+    // ======================================
+    //      Video Capture
+    // ======================================
+    m_videoCapture.initialize();
+    m_videoCapture.startCapture();
 
     //    m_videoCapture.setWindowID(windowsID);
     //    m_videoCapture.initialize();
@@ -73,26 +117,13 @@ initialize()
 void Controller::
 initializeConnections()
 {
-    connect(&m_controlPanelSDK, &ControlPanelSDK::
-            sigProcessorDataChanged,
-            this, &Controller::
-            sltProcessorDataChanged);
-
-    connect(&m_serialController,
+    connect(&m_panelSerialController,
             &SerialController::sigNewDataReceived,
-            this, &Controller::sltNewDataRecieved);
+            this, &Controller::sltPanelNewDataRecieved);
 
-    // connect(&m_mainWindow,
-    //         &MainWindow::sigStartTrackRequested,
-    //         this, &Controller::sltStartTrackRequested);
-
-    // connect(&m_mainWindow,
-    //         &MainWindow::sigStopTrackRequested,
-    //         this, &Controller::sltStopTrackRequested);
-
-    // connect(&m_mainWindow,
-    //         &MainWindow::sigChangeOSD_Requested,
-    //         this, &Controller::sltChangeOSD_Requested);
+    connect(&m_cameraSerialController,
+            &SerialController::sigNewDataReceived,
+            this, &Controller::sltCameraNewDataRecieved);
 
     connect(&m_videoCapture, &VideoCapture::
             sigNewFrameReceived, this,
@@ -100,18 +131,322 @@ initializeConnections()
 }
 
 void Controller::
-analyzePacket()
+analyzePanelPacket()
 {
-    while (m_serialBuffer.length() >=
+    while (m_panelSerialBuffer.length() >=
+           m_panelMinimumLength)
+    {
+        const int16_t startIndex =
+                m_panelSerialBuffer.
+                indexOf(m_panelHeader);
+
+        if (startIndex == -1)
+        {
+            m_panelSerialBuffer.clear();
+
+            break;
+        }
+
+        int16_t offset = startIndex;
+
+        if (m_footerOffset != -1)
+        {
+            offset = m_footerOffset;
+        }
+
+        const int16_t endIndex =
+                m_panelSerialBuffer.indexOf(
+                    m_panelFooter, offset);
+
+        if (endIndex == -1)
+        {
+            break;
+        }
+
+        const uint8_t packetLength =
+                endIndex - startIndex + 2;
+
+        if (packetLength < m_panelMinimumLength)
+        {
+            m_footerOffset = endIndex + 1;
+
+            break;
+        }
+        else
+        {
+            m_footerOffset = -1;
+        }
+
+        const QByteArray packet =
+                m_panelSerialBuffer.mid(
+                    startIndex, packetLength);
+
+        // qCritical() << " App -> Examine Packet "
+        //             << packet.toHex(' ');
+
+        const uint8_t sourceID =
+                packet.at(m_panelSourceID_ByteIndex);
+
+        if (sourceID != Device_GUI &&
+                sourceID != Device_MUX_Board)
+        {
+            m_panelSerialBuffer.remove(
+                        0, startIndex + 1);
+            break;
+        }
+
+        const uint8_t destinationID =
+                packet.at(m_panelDestinationID_ByteIndex);
+
+        if (destinationID != Device_Processor)
+        {
+            m_panelSerialBuffer.remove(
+                        0, startIndex + 1);
+            break;
+        }
+
+        const uint8_t length =
+                packet.at(m_panelLengthByteIndex);
+
+        if (packetLength != (length + 11))
+        {
+            m_panelSerialBuffer.remove(
+                        0, startIndex + 1);
+            break;
+        }
+
+        const uint8_t checksum1_Index = length + 7;
+
+        const uint8_t checksum2_Index =
+                (checksum1_Index + 1);
+
+        const uint8_t checksum1 =
+                packet.at(checksum1_Index);
+
+        const uint8_t checksum2 =
+                packet.at(checksum2_Index);
+
+        uint8_t calculatedChecksum1 = 0x00;
+        uint8_t calculatedChecksum2 = 0x00;
+
+        CommandCreator::calculateChecksum(
+                    packet, calculatedChecksum1,
+                    calculatedChecksum2);
+        if ((checksum1 != calculatedChecksum1) ||
+                (checksum2 != calculatedChecksum2))
+        {
+            m_panelSerialBuffer.remove(
+                        0, startIndex + 1);
+            break;
+        }
+
+        // qCritical() << " App -> Packet is Valid. ";
+
+        m_panelSerialBuffer.remove(
+                    startIndex, packetLength);
+
+        interpretPanelPacket(packet);
+    }
+}
+
+void Controller::
+interpretPanelPacket(
+        const QByteArray &packet)
+{
+    const uint8_t moduleID_Byte = packet.at(
+                m_panelModuleID_ByteIndex);
+
+    switch (moduleID_Byte)
+    {
+    case Module_Processor:
+    {
+        interpretProcessorPacket(packet);
+
+        break;
+    }
+    default:
+    {
+        break;
+    }
+    }
+}
+
+void Controller::
+interpretProcessorPacket(
+        const QByteArray &packet)
+{
+    const uint8_t commandByte =
+            packet.at(m_panelCommandID_ByteIndex);
+
+    const ProcessorCommands command =
+            static_cast<ProcessorCommands>(
+                commandByte);
+
+    const uint8_t packetSize = packet.length();
+
+    switch (command)
+    {
+    case ProcessorCommand_StartAutoLock:
+    {
+        if (packetSize != m_panelMinimumLength + 8)
+        {
+            break;
+        }
+
+        int16_t xPosRatio = 0x0000;
+        xPosRatio |= toInt16(packet.at(7)) & 0x00FF;
+        xPosRatio |= (toInt16(packet.at(8)) & 0x00FF) << 8;
+
+        const bool isX_PosValid =
+                xPosRatio >= -1000 &&
+                xPosRatio <= 1000;
+
+        if (isX_PosValid == false)
+        {
+            break;
+        }
+
+        int16_t yPosRatio = 0x0000;
+        yPosRatio |= toInt16(packet.at(9)) & 0x00FF;
+        yPosRatio |= (toInt16(packet.at(10)) & 0x00FF) << 8;
+
+        const bool isY_PosValid =
+                yPosRatio >= -1000 &&
+                yPosRatio <= 1000;
+
+        if (isY_PosValid == false)
+        {
+            break;
+        }
+
+        const QPointF posRatio(
+                    xPosRatio / 1000.0,
+                    yPosRatio / 1000.0);
+
+        uint16_t width = 0x0000;
+        width |= toUInt16(packet.at(11)) & 0x00FF;
+        width |= (toUInt16(packet.at(12)) & 0x00FF) << 8;
+
+        if (width > 1000)
+        {
+            break;
+        }
+
+        uint16_t height = 0x0000;
+        height |= toUInt16(packet.at(13)) & 0x00FF;
+        height |= (toUInt16(packet.at(14)) & 0x00FF) << 8;
+
+        if (height > 1000)
+        {
+            break;
+        }
+
+        const QRectF rectangle(xPosRatio / 1000.0,
+                               yPosRatio / 1000.0,
+                               width / 1000.0,
+                               height / 1000.0);
+
+        processStartAutoTrack(rectangle);
+
+        break;
+    }
+    case ProcessorCommand_StopTrack:
+    {
+        if (packetSize != m_panelMinimumLength)
+        {
+            break;
+        }
+
+        processStopTrack();
+
+        break;
+    }
+    case ProcessorCommand_SetDateAndTime:
+    {
+        uint32_t decimalDate = 0x00000000;
+        decimalDate |= (toUInt32(packet.at( 7)) & 0x000000FF) << 0;
+        decimalDate |= (toUInt32(packet.at( 8)) & 0x000000FF) << 8;
+        decimalDate |= (toUInt32(packet.at( 9)) & 0x000000FF) << 16;
+        decimalDate |= (toUInt32(packet.at(10)) & 0x000000FF) << 24;
+
+        uint32_t decimalTime = 0x00000000;
+        decimalTime |= (toUInt32(packet.at(11)) & 0x000000FF) << 0;
+        decimalTime |= (toUInt32(packet.at(12)) & 0x000000FF) << 8;
+        decimalTime |= (toUInt32(packet.at(13)) & 0x000000FF) << 16;
+        decimalTime |= (toUInt32(packet.at(14)) & 0x000000FF) << 24;
+
+        const QString dateString =
+                QString::number(decimalDate);
+
+        const QString timeString =
+                QString::number(decimalTime);
+
+        const QDate date = QDate::fromString(
+                    dateString, "yyyyMMdd");
+
+        const QTime time = QTime::fromString(
+                    timeString, "hhmmss");
+
+        QString RTC_Time;
+        RTC_Time += date.toString("yyyy-MM-dd");
+        RTC_Time += " ";
+        RTC_Time += time.toString("hh:mm:ss");
+
+        const QString program = QString("%1/setDateTime.sh")
+                .arg(QCoreApplication::applicationDirPath());
+
+        QStringList args;
+        args << RTC_Time;
+
+        QProcess process;
+        process.start(program, args,
+                      QIODevice::ReadWrite);
+
+        const bool isFinished =
+                process.waitForFinished(2000);
+
+        std::cerr << "********************************"
+                     "********************************\n";
+
+        std::cerr << "  Change system date time to "
+                  << RTC_Time.toStdString() << ": ";
+
+        if (isFinished == true)
+        {
+            std::cerr << "exitcode: "
+                      << process.exitCode()
+                      << std::endl;
+        }
+        else
+        {
+            std::cerr << "Timeout\n";
+        }
+
+        process.close();
+
+        std::cerr << "********************************"
+                     "********************************\n";
+    }
+    default:
+    {
+        return;
+    }
+    }
+}
+
+void Controller::
+analyzeCameraPacket()
+{
+    while (m_cameraSerialBuffer.length() >=
            m_feedbackSize)
     {
         const int16_t headerIndex =
-                m_serialBuffer.indexOf(
-                    m_feedbackHeader);
+                m_cameraSerialBuffer.indexOf(
+                    m_cameraFeedbackHeader);
 
         if (headerIndex < 0)
         {
-            m_serialBuffer.clear();
+            m_cameraSerialBuffer.clear();
 
             break;
         }
@@ -119,13 +454,13 @@ analyzePacket()
         const int16_t endIndex = headerIndex +
                 m_feedbackSize - 1;
 
-        if (endIndex >= m_serialBuffer.length())
+        if (endIndex >= m_cameraSerialBuffer.length())
         {
             break;
         }
 
         const QByteArray packet =
-                m_serialBuffer.mid(
+                m_cameraSerialBuffer.mid(
                     headerIndex, m_feedbackSize);
 
         const uint8_t calculatedChecksum =
@@ -134,17 +469,17 @@ analyzePacket()
         const uint8_t feedbackChecksum =
                 packet.at(m_feedbackSize - 1);
 
-        m_serialBuffer.remove(0, endIndex + 1);
+        m_cameraSerialBuffer.remove(0, endIndex + 1);
 
         if (calculatedChecksum == feedbackChecksum)
         {
-            interpretPacket(packet);
+            interpretCameraPacket(packet);
         }
     }
 }
 
 void Controller::
-interpretPacket(
+interpretCameraPacket(
         const QByteArray &packet)
 {
     const uint8_t byte2 = packet.at(2);
@@ -170,12 +505,25 @@ calculateChecksum(
 }
 
 void Controller::
+processStartAutoTrack(
+        const QRectF &rect)
+{
+
+}
+
+void Controller::
+processStopTrack()
+{
+
+}
+
+void Controller::
 startCameraTrack(const int16_t &xPos,
-        const int16_t &yPos)
+                 const int16_t &yPos)
 {
     QByteArray packet(16, char(0x00));
-    packet[ 0] = m_commandHeader.at(0);
-    packet[ 1] = m_commandHeader.at(1);
+    packet[ 0] = m_cameraCommandHeader.at(0);
+    packet[ 1] = m_cameraCommandHeader.at(1);
     packet[ 2] = 0x0D;
     packet[ 3] = toUInt8((xPos & 0x00FF));
     packet[ 4] = toUInt8((xPos & 0xFF00) >> 8);
@@ -191,7 +539,7 @@ startCameraTrack(const int16_t &xPos,
     packet[14] = 0x00;
     packet[15] = calculateChecksum(packet);
 
-    m_serialController.
+    m_cameraSerialController.
             writeData(packet);
 }
 
@@ -199,8 +547,8 @@ void Controller::
 stopCameraTrack()
 {
     QByteArray packet(16, char(0x00));
-    packet[ 0] = m_commandHeader.at(0);
-    packet[ 1] = m_commandHeader.at(1);
+    packet[ 0] = m_cameraCommandHeader.at(0);
+    packet[ 1] = m_cameraCommandHeader.at(1);
     packet[ 2] = 0x0E;
     packet[ 3] = 0x00;
     packet[ 4] = 0x00;
@@ -216,7 +564,7 @@ stopCameraTrack()
     packet[14] = 0x00;
     packet[15] = calculateChecksum(packet);
 
-    m_serialController.
+    m_cameraSerialController.
             writeData(packet);
 }
 
@@ -231,8 +579,8 @@ changeCameraOSD_Visibility(
     // ===========================
     if (state == true)
     {
-        packet[ 0] = m_commandHeader.at(0);
-        packet[ 1] = m_commandHeader.at(1);
+        packet[ 0] = m_cameraCommandHeader.at(0);
+        packet[ 1] = m_cameraCommandHeader.at(1);
         packet[ 2] = 0x40;
         packet[ 3] = 0x00;
         packet[ 4] = 0x00;
@@ -250,8 +598,8 @@ changeCameraOSD_Visibility(
     }
     else
     {
-        packet[ 0] = m_commandHeader.at(0);
-        packet[ 1] = m_commandHeader.at(1);
+        packet[ 0] = m_cameraCommandHeader.at(0);
+        packet[ 1] = m_cameraCommandHeader.at(1);
         packet[ 2] = 0x41;
         packet[ 3] = 0x00;
         packet[ 4] = 0x00;
@@ -268,36 +616,28 @@ changeCameraOSD_Visibility(
         packet[15] = calculateChecksum(packet);
     }
 
-    m_serialController.
+    m_cameraSerialController.
             writeData(packet);
 }
 
 void Controller::
-sltProcessorDataChanged(
-        const ProcessorCommands &command)
+sltPanelNewDataRecieved(
+        const QByteArray &packet)
 {
-    switch (command)
-    {
-    case ProcessorCommand_StartAutoLock:
-    {
-        // start auto lock
-        break;
-    }
-    case ProcessorCommand_StopTrack:
-    {
-        // stop auto lock
-        break;
-    }
-    }
+    m_panelSerialBuffer.
+            push_back(packet);
+
+    analyzePanelPacket();
 }
 
 void Controller::
-sltNewDataRecieved(
+sltCameraNewDataRecieved(
         const QByteArray &packet)
 {
-    m_serialBuffer.push_back(packet);
+    m_cameraSerialBuffer.
+            push_back(packet);
 
-    analyzePacket();
+    analyzeCameraPacket();
 }
 
 void Controller::

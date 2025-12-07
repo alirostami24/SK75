@@ -3,9 +3,12 @@
 #include <iostream>
 
 #include <QObject>
+#include <QProcess>
+#include <QDateTime>
+#include <QApplication>
 #include <QSerialPortInfo>
 
-#include "ControlPanelSDK.h"
+#include "CommandCreator.h"
 #include "ControlPanelSDK_global.h"
 
 #include "VideoCapture.h"
@@ -21,26 +24,53 @@ public:
     Controller();
 
 private:
-    ControlPanelSDK m_controlPanelSDK;
+    SerialController m_panelSerialController;
 
-    SerialController m_serialController;
+    SerialController m_cameraSerialController;
+
     VideoCapture m_videoCapture;
 
-    QByteArray m_serialBuffer;
+    QByteArray m_panelSerialBuffer;
+    QByteArray m_cameraSerialBuffer;
 
-    QByteArray m_commandHeader;
-    QByteArray m_feedbackHeader;
+    const uint8_t m_panelSourceID_ByteIndex;
+    const uint8_t m_panelDestinationID_ByteIndex;
+    const uint8_t m_panelModuleID_ByteIndex;
+    const uint8_t m_panelCommandID_ByteIndex;
+    const uint8_t m_panelLengthByteIndex;
+
+    const uint8_t m_panelMinimumLength;
+
+    int16_t m_footerOffset;
+
+    QByteArray m_panelHeader;
+    QByteArray m_panelFooter;
+
+    QByteArray m_cameraCommandHeader;
+    QByteArray m_cameraFeedbackHeader;
     const uint8_t m_feedbackSize;
 
     void initialize();
     void initializeConnections();
 
-    void analyzePacket();
-    void interpretPacket(
+    void analyzePanelPacket();
+    void interpretPanelPacket(
+            const QByteArray &packet);
+
+    void interpretProcessorPacket(
+            const QByteArray &packet);
+
+    void analyzeCameraPacket();
+    void interpretCameraPacket(
             const QByteArray &packet);
 
     uint8_t calculateChecksum(
             const QByteArray &packet);
+
+    void processStartAutoTrack(
+            const QRectF &rect);
+
+    void processStopTrack();
 
     void startCameraTrack(const int16_t &xPos,
                           const int16_t &yPos);
@@ -51,10 +81,10 @@ private:
             const bool &state);
 
 private Q_SLOTS:
-    void sltProcessorDataChanged(
-            const ProcessorCommands &command);
+    void sltPanelNewDataRecieved(
+            const QByteArray &packet);
 
-    void sltNewDataRecieved(
+    void sltCameraNewDataRecieved(
             const QByteArray &packet);
 
     void sltNewFrameReceived();

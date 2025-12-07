@@ -10,32 +10,10 @@ CONFIG += c++11
 # deprecated API in order to know how to port your code away from it.
 DEFINES += QT_DEPRECATED_WARNINGS
 
-CONFIG += link_pkgconfig
-
-PKGCONFIG += gstreamer-1.0 \
-        gstreamer-rtsp-server-1.0 \
-        gstreamer-video-1.0 \
-        glib-2.0 \
-        gobject-2.0 \
-        gio-2.0 \
-        opencv
-
 # You can also make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
-
-include($$PWD/MCMD/MCMD.pri)
-
-SOURCES += \
-    $$PWD/Detector/Detector.cpp \
-    $$PWD/Detector/globalCalculation.cpp \
-    $$PWD/Detector/IntensityDetector/IntensityDetector.cpp \
-    $$PWD/Detector/IntensityDetector/TH/TH.cpp \
-    Controller.cpp \
-    SerialController.cpp \
-    VideoCapture.cpp \
-    main.cpp \
 
 HEADERS += \
     $$PWD/Detector/Detector.h \
@@ -47,19 +25,57 @@ HEADERS += \
     SerialController.h \
     VideoCapture.h
 
+SOURCES += \
+    $$PWD/Detector/Detector.cpp \
+    $$PWD/Detector/globalCalculation.cpp \
+    $$PWD/Detector/IntensityDetector/IntensityDetector.cpp \
+    $$PWD/Detector/IntensityDetector/TH/TH.cpp \
+    Controller.cpp \
+    SerialController.cpp \
+    VideoCapture.cpp \
+    main.cpp \
+
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 win32 {
+    CONFIG += link_pkgconfig
+
+    PKGCONFIG += gstreamer-1.0 \
+            gstreamer-rtsp-server-1.0 \
+            gstreamer-video-1.0 \
+            glib-2.0 \
+            gobject-2.0 \
+            gio-2.0
+
     LIBS += -L'C:/Program Files/OpenCV3.4.16/lib/' -lopencv_world3416
 
     INCLUDEPATH += 'C:/Program Files/OpenCV3.4.16/include'
     DEPENDPATH += 'C:/Program Files/OpenCV3.4.16/include'
+
+    LIBS += -L$$PWD/ExternalLibraries/ControlPanelSDK/Windows/ -lControlPanelSDK
+
+    INCLUDEPATH += $$PWD/ExternalLibraries/ControlPanelSDK/include
+    DEPENDPATH += $$PWD/ExternalLibraries/ControlPanelSDK/include
 }
 
-unix:!macx: LIBS += -L$$PWD/ExternalLibraries/ControlPanelSDK/Linux/ -lControlPanelSDK
+unix {
+    CONFIG += link_pkgconfig
 
-INCLUDEPATH += $$PWD/ExternalLibraries/ControlPanelSDK/include
-DEPENDPATH += $$PWD/ExternalLibraries/ControlPanelSDK/include
+    PKGCONFIG += gstreamer-1.0 \
+            gstreamer-rtsp-server-1.0 \
+            gstreamer-video-1.0 \
+            glib-2.0 \
+            gobject-2.0 \
+            gio-2.0 \
+            opencv
+
+    LIBS += -L$$PWD/ExternalLibraries/ControlPanelSDK/Linux/ -lControlPanelSDK
+
+    INCLUDEPATH += $$PWD/ExternalLibraries/ControlPanelSDK/include
+    DEPENDPATH += $$PWD/ExternalLibraries/ControlPanelSDK/include
+}
+
+
