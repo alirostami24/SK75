@@ -23,10 +23,6 @@ public:
     void startCapture();
     void stopCapture();
 
-    void setForceAspectRatio(bool state);
-    bool isInitialized() const;
-
-    QByteArray getFrameBuffer() const;
     QSize getFrameSize() const;
     void setFrameSize(const QSize &frameSize);
 

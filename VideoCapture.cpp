@@ -67,11 +67,6 @@ VideoCapture::cb_have_data (GstPad          *pad,
 bool VideoCapture::
 initialize()
 {
-    if (m_windowID == guintptr())
-    {
-        return false;
-    }
-
     QString pipestr = "rtspsrc location=rtsp://192.168.1.100/ch0/stream0 ! "
                       "application/x-rtp,media=video,clockrate=90000,"
                       "encoding-name=H264,payload=96 ! rtph264depay ! "
@@ -125,27 +120,6 @@ void VideoCapture::stopCapture()
 
         m_gstData.pipeline = nullptr;
     }
-}
-
-void VideoCapture::
-setForceAspectRatio(bool state)
-{
-    if (m_gstData.sink)
-    {
-        g_object_set(G_OBJECT(m_gstData.sink), "force-aspect-ratio", state, NULL);
-    }
-}
-
-bool VideoCapture::
-isInitialized() const
-{
-    return m_gstData.sink != nullptr;
-}
-
-QByteArray VideoCapture::
-getFrameBuffer() const
-{
-    return m_frameBuffer;
 }
 
 QSize VideoCapture::
