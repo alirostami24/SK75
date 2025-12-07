@@ -28,12 +28,21 @@ PKGCONFIG += gstreamer-1.0 \
 include($$PWD/MCMD/MCMD.pri)
 
 SOURCES += \
+    $$PWD/Detector/Detector.cpp \
+    $$PWD/Detector/globalCalculation.cpp \
+    $$PWD/Detector/IntensityDetector/IntensityDetector.cpp \
+    $$PWD/Detector/IntensityDetector/TH/TH.cpp \
     Controller.cpp \
     SerialController.cpp \
     VideoCapture.cpp \
     main.cpp \
 
 HEADERS += \
+    $$PWD/Detector/Detector.h \
+    $$PWD/Detector/DetectorInterface.h \
+    $$PWD/Detector/globalCalculation.h \
+    $$PWD/Detector/IntensityDetector/IntensityDetector.h \
+    $$PWD/Detector/IntensityDetector/TH/TH.hpp \
     Controller.h \
     SerialController.h \
     VideoCapture.h
