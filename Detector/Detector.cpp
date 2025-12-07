@@ -17,6 +17,12 @@ Detector::Detector()
     m_autoLockDistanceThreshold = 0.05 * std::min(m_inputSize.width, m_inputSize.height);
     m_autoLockNumberOfDetectedThreshold = 3;
 
+    // Target position Estimation
+    m_isTargetPositionEstimationEnabled = true;
+    m_targetEstimationMemory.resize(3);
+    m_targetEstimationMemoryIndex = 0;
+    m_lastEstimatedTargetPosition = cv::Point(0, 0);
+
     m_detectorSearchRect = cv::Rect(0, 0, m_inputSize.width, m_inputSize.height);
 
     //// Intensity Detector Connection
@@ -182,6 +188,24 @@ void Detector::sltAutoLockChecking()
 
             if (m_allAutoLockInfo.size() > 0)
             {
+//                cv::Point2d posEstimation;
+//                if (m_allAutoLockInfo.size() == 1)
+//                {
+//                    if (m_isTargetPositionEstimationEnabled)
+//                    {
+//                            // Update the estimation for next frame
+//                            Translation meanTranslation;
+//                            meanTranslation = {0, 0};
+//                            for (size_t i = 0; i < m_targetEstimationMemory.size(); ++i) {
+//                                meanTranslation.horizontal += m_targetEstimationMemory.at(i).horizontal;
+//                                meanTranslation.vertical   += m_targetEstimationMemory.at(i).vertical;
+//                            }
+
+//                            posEstimation.x = meanTranslation.horizontal / m_targetEstimationMemory.size();
+//                            posEstimation.y = meanTranslation.vertical / m_targetEstimationMemory.size();
+//                    }
+//                }
+
                 for (int i = 0; i < m_allAutoLockInfo.size(); ++i) {
 
                     if (checkedDetections.at<uchar>(i, 0) == 1) {
@@ -218,6 +242,27 @@ void Detector::sltAutoLockChecking()
                 newAutoLockInfo.push_back(autoLockInfo);
             }
         }
+
+//        if (m_isTargetPositionEstimationEnabled) {
+
+//            if (m_allAutoLockInfo.size() == 1)
+//            {
+//                m_targetEstimationMemory.at(m_targetEstimationMemoryIndex % m_targetEstimationMemory.size()).horizontal
+//                        = m_vectorDetectionResult[0].bbox.x - m_lastEstimatedTargetPosition.x;
+//                m_targetEstimationMemory.at(m_targetEstimationMemoryIndex % m_targetEstimationMemory.size()).vertical
+//                        = m_vectorDetectionResult[0].bbox.y - m_lastEstimatedTargetPosition.y;
+
+//                m_lastEstimatedTargetPosition = cv::Point(m_vectorDetectionResult[0].bbox.x, m_vectorDetectionResult[0].bbox.y);
+
+//                m_targetEstimationMemoryIndex++;
+//            }
+//            else
+//            {
+//                m_targetEstimationMemory.clear();
+//                m_targetEstimationMemoryIndex = 0;
+//                m_lastEstimatedTargetPosition = cv::Point(0, 0);
+//            }
+//        }
 
         if (satisfiedAutoLockBBox.width > 0 && satisfiedAutoLockBBox.height > 0)
         {

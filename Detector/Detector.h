@@ -24,11 +24,6 @@ public:
         cv::Rect bbox;
     };
 
-    struct TCPDetectionInfo {
-        quint8 confidence;
-        QRect bbox;
-    };
-
     void enableDetecting(const bool& state);
     void enableAutoLock(const bool& state);
     std::string getName();
@@ -88,10 +83,20 @@ private:
 
     TrackSizes m_targetSize;
 
+    // Target position Estimation
+    struct Translation {
+        double horizontal;
+        double vertical;
+    };
+
+    bool m_isTargetPositionEstimationEnabled;
+    std::vector<Translation> m_targetEstimationMemory;
+    int m_targetEstimationMemoryIndex;
+    cv::Point m_lastEstimatedTargetPosition;
+
+
 
 private Q_SLOTS:
-    void sltIsDetectorActive();
-    void sltDetectorActivate();
     void sltAutoLockChecking();
 
 
