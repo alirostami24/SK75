@@ -59,4 +59,6 @@ private Q_SLOTS:
 
     void sltNewFrameReceived();
 
+    void sltAutoLockDetected(const QRectF &bbox);
+
 };

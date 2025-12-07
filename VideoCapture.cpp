@@ -1,15 +1,16 @@
 #include "VideoCapture.h"
 
 static VideoCapture* _myVideoCaptureInstance;
+static Detector* _detector;
 
 VideoCapture::
 VideoCapture()
 {
-//    QObject::connect(&m_detector, &Detector::sigAutoLockDetected,
-//            this, &ImageProcessor::sltAutoLockDetected);
+    QObject::connect(_detector, &Detector::sigAutoLockDetected,
+            this, &VideoCapture::sigAutoLockDetected);
 
-//    QObject::connect(&m_detector, &Detector::sigDetectionDataUpdated,
-//            this, &ImageProcessor::sltHandleDetectionResult);
+    QObject::connect(_detector, &Detector::sigDetectionDataUpdated,
+            this, &VideoCapture::sltDetectionDataUpdated);
 
 }
 
@@ -18,9 +19,16 @@ void VideoCapture::processNewFrame(guint8 *pData)
     cv::Mat frame = cv::Mat(_myVideoCaptureInstance->getFrameSize().height() * 1.5, _myVideoCaptureInstance->getFrameSize().width(),
                             CV_8UC3, (void*)(pData));
 
-// Todo
-   // detector
+    if (_detector->isDetectorActivated())
+    {
+        _detector->detect(&frame);
+    }
+}
 
+void VideoCapture::sltDetectionDataUpdated()
+{
+    cv::Rect objectRect = _detector->getDetectedBoundingBox();
+    // drawing result
 }
 
 
@@ -122,6 +130,16 @@ void VideoCapture::stopCapture()
     }
 }
 
+void VideoCapture::enableDetecting(const bool &state)
+{
+    _detector->enableDetecting(state);
+}
+
+void VideoCapture::enableAutoLock(const bool &state)
+{
+    _detector->enableAutoLock(state);
+}
+
 QSize VideoCapture::
 getFrameSize() const
 {
@@ -134,6 +152,5 @@ void VideoCapture::setFrameSize(const QSize &frameSize)
 
     _myVideoCaptureInstance = this;
 
-
-    // Set size for detector
+    _detector->setInputSize(cv::Size(frameSize.width(), frameSize.height()));
 }

@@ -67,6 +67,12 @@ public:
     /// Returns a vector containing the bounding boxes and id of all detected objects.
     virtual std::vector<IDetector::DetectionInfo> getAllDetectedObjects() const { return std::vector<IDetector::DetectionInfo>();};
 
+    ///
+    /// \brief setInputSize
+    /// Set input size.
+    ///
+    virtual void setInputSize(const cv::Size& inputSize) {};
+
     /// \brief enableDetection
     /// Activate and deactive detector
     /// \param state

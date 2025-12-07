@@ -13,7 +13,6 @@
 /* Includes for the OpenCV                                              */
 /************************************************************************/
 #include "opencv2/opencv.hpp"
-#include <opencv2/bgsegm.hpp>
 
 
 #include <chrono>
@@ -40,12 +39,12 @@ class TH {
     void init(cv::Rect inputRect, cv::Size inputSize);
     void run(cv::Mat input);
     cv::Mat getMask();
+    cv::Rect getBoundingBox();
     bool isTHActivated();
     bool isTHInitialized();
     void stopTH();
     void clearMemory();
     void reset();
-    cv::Rect getBoundingBox();
 
 
  private:
@@ -70,7 +69,6 @@ class TH {
     cv::Mat m_inputFrame;
     cv::Mat m_inputCroped;
     cv::Mat m_inputResized;
-    bool m_isInitialized;
 
     cv::Rect m_tempTargetBBox;
     cv::Rect m_targetBBox;

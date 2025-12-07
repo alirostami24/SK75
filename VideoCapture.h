@@ -23,6 +23,9 @@ public:
     void startCapture();
     void stopCapture();
 
+    void enableDetecting(const bool& state);
+    void enableAutoLock(const bool& state);
+
     QSize getFrameSize() const;
     void setFrameSize(const QSize &frameSize);
 
@@ -37,14 +40,13 @@ private:
         GST_Data()
         {
             pipeline = nullptr;
-            sink = nullptr;
-            bin = nullptr;
             pad = nullptr;
         }
     };
 
-    Detector m_detector;
     GST_Data m_gstData;
+
+    Detector m_detector;
 
     QByteArray m_frameBuffer;
     QSize m_frameSize;
@@ -52,9 +54,12 @@ private:
     static GstPadProbeReturn cb_have_data(GstPad *pad, GstPadProbeInfo *info, gpointer user_data);
     static void processNewFrame(guint8 *pData);
 
+private Q_SLOTS:
+    void sltDetectionDataUpdated();
 
 Q_SIGNALS:
     void sigNewFrameReceived();
+    void sigAutoLockDetected(const QRectF &bbox);
 };
 
 #endif // VIDEOCAPTURE_H

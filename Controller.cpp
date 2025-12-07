@@ -63,8 +63,15 @@ initialize()
         qCritical() << "Error String:" << errorString;
     }
 
+    QObject::connect(&m_videoCapture, &VideoCapture::sigAutoLockDetected,
+            this, &Controller::sltAutoLockDetected);
+
     m_videoCapture.initialize();
     m_videoCapture.setFrameSize(QSize(640, 512));
+
+    m_videoCapture.enableDetecting(true);
+
+
 }
 
 void Controller::
@@ -277,11 +284,13 @@ sltProcessorDataChanged(
     {
     case ProcessorCommand_StartAutoLock:
     {
-        // start auto lock
+        m_videoCapture.enableAutoLock(true);
         break;
     }
     case ProcessorCommand_StopTrack:
     {
+        m_videoCapture.enableDetecting(true);
+        m_videoCapture.enableAutoLock(false);
         // stop auto lock
         break;
     }
@@ -301,5 +310,11 @@ void Controller::
 sltNewFrameReceived()
 {
 
+}
+
+void Controller::sltAutoLockDetected(const QRectF &bbox)
+{
+    m_videoCapture.enableDetecting(false);
+    /// start tracker
 }
 

@@ -106,6 +106,12 @@ std::vector<IDetector::DetectionInfo> IntensityDetector::getAllDetectedObjects()
     return m_vectorDetectionResult;
 }
 
+void IntensityDetector::setInputSize(const cv::Size &inputSize)
+{
+    m_inputSize = inputSize;
+    m_thDetector->reset();
+}
+
 void IntensityDetector::enableDetection(bool state)
 {
     m_isDetecorActivated = state;
@@ -113,12 +119,12 @@ void IntensityDetector::enableDetection(bool state)
     {
         clearMemory();
         m_thDetector->enableTH(false);
-        m_thDetector->reset();
+        m_thDetector->clearMemory();
     }
     else
     {
         m_thDetector->enableTH(true);
-        m_thDetector->reset();
+        m_thDetector->clearMemory();
     }
 }
 
@@ -132,7 +138,7 @@ void IntensityDetector::stopDetection()
     m_isDetecorActivated = false;
     m_vectorDetectionResult.clear();
     //m_detectorSearchRect = cv::Rect();
-    m_thDetector->reset();
+    m_thDetector->clearMemory();
     m_thDetector->stopTH();
 }
 
@@ -140,7 +146,7 @@ void IntensityDetector::clearMemory()
 {
     m_vectorDetectionResult.clear();
     //m_detectorSearchRect = cv::Rect();
-    m_thDetector->reset();
+    m_thDetector->clearMemory();
 }
 
 bool IntensityDetector::checkDetectValidity()
