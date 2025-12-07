@@ -10,6 +10,7 @@
 
 #include "gst/gst.h"
 #include "gst/video/videooverlay.h"
+#include "Detector/Detector.h"
 
 class VideoCapture : public QObject
 {
@@ -18,49 +19,47 @@ class VideoCapture : public QObject
 public:
     VideoCapture();
 
-    void setWindowID(const guintptr &windowID);
-
     bool initialize();
     void startCapture();
     void stopCapture();
 
-    void setForceAspectRatio(bool state);
-    bool isInitialized() const;
+    void enableDetecting(const bool& state);
+    void enableAutoLock(const bool& state);
 
-    QByteArray getFrameBuffer() const;
     QSize getFrameSize() const;
+    void setFrameSize(const QSize &frameSize);
 
 private:
     struct GST_Data
     {
         GstElement *pipeline;
-        GstElement *sink;
-        GstElement *fakesink;
-        GstElement *bin;
-        GstElement *convert;
+        GstElement *conversion;
 
         GstPad *pad;
 
         GST_Data()
         {
             pipeline = nullptr;
-            sink = nullptr;
-            bin = nullptr;
             pad = nullptr;
         }
     };
 
     GST_Data m_gstData;
 
-    guintptr m_windowID;
+    Detector m_detector;
 
     QByteArray m_frameBuffer;
     QSize m_frameSize;
 
-    static GstFlowReturn on_new_sample_from_sink(GstElement* sink, gpointer user_data);
+    static GstPadProbeReturn cb_have_data(GstPad *pad, GstPadProbeInfo *info, gpointer user_data);
+    static void processNewFrame(guint8 *pData);
+
+private Q_SLOTS:
+    void sltDetectionDataUpdated();
 
 Q_SIGNALS:
     void sigNewFrameReceived();
+    void sigAutoLockDetected(const QRectF &bbox);
 };
 
 #endif // VIDEOCAPTURE_H

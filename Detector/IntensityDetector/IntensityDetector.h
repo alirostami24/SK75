@@ -48,6 +48,12 @@ public:
     /// Returns a vector containing the bounding boxes and id of all detected objects.
     std::vector<IDetector::DetectionInfo> getAllDetectedObjects() const override;
 
+    ///
+    /// \brief setInputSize
+    /// Set input size.
+    ///
+    void setInputSize(const cv::Size& inputSize) override;
+
     /// \brief enableDetection
     /// Activate and deactive detector
     /// \param state
@@ -100,8 +106,8 @@ private:
     bool m_isDetectorInitialized;
 
     std::vector<DetectionValidityInfo> m_allDetectionValidityInfo;
-    double m_autoLockDistanceThreshold;
-    int m_autoLockNumberOfDetectedThreshold;
+    double m_maxValidDistance;
+    int m_numberOfDetectedThreshold;
     cv::Rect2f m_validObjectRect;
 
 

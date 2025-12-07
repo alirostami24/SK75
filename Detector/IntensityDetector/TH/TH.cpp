@@ -44,7 +44,7 @@ void TH::run(cv::Mat input)
     m_inputCroped = m_inputFrame(m_inputRect);
     cv::resize(m_inputCroped, m_inputResized, m_inputSize);
 
-    if (m_isInitialized == false)
+    if (m_isTHInitialized == false)
     {
         init(cv::Rect(0, 0, input.cols, input.rows), cv::Size(input.cols, input.rows));
     }
@@ -91,6 +91,7 @@ void TH::stopTH()
 
 void TH::clearMemory()
 {
+    m_targetBBox = cv::Rect();
 }
 
 void TH::reset()

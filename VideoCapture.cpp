@@ -1,72 +1,76 @@
 #include "VideoCapture.h"
 
+static VideoCapture* _myVideoCaptureInstance;
+static Detector* _detector;
+
 VideoCapture::
 VideoCapture()
 {
+    QObject::connect(_detector, &Detector::sigAutoLockDetected,
+            this, &VideoCapture::sigAutoLockDetected);
+
+    QObject::connect(_detector, &Detector::sigDetectionDataUpdated,
+            this, &VideoCapture::sltDetectionDataUpdated);
 
 }
 
-GstFlowReturn
-VideoCapture::on_new_sample_from_sink(GstElement* sink, gpointer user_data)
+void VideoCapture::processNewFrame(guint8 *pData)
 {
-    return GST_FLOW_OK;
+    cv::Mat frame = cv::Mat(_myVideoCaptureInstance->getFrameSize().height() * 1.5, _myVideoCaptureInstance->getFrameSize().width(),
+                            CV_8UC3, (void*)(pData));
 
-    VideoCapture* videoCapture = static_cast<VideoCapture*>(user_data);
-    GstSample* sample;
-    GstCaps *caps;
-    GstStructure *structure;
-    g_signal_emit_by_name(sink, "pull-sample", &sample);
-
-    if (sample)
+    if (_detector->isDetectorActivated())
     {
-        caps = gst_sample_get_caps(sample);
+        _detector->detect(&frame);
+    }
+}
 
-        if (caps)
-        {
-            structure = gst_caps_get_structure(caps, 0);
+void VideoCapture::sltDetectionDataUpdated()
+{
+    cv::Rect objectRect = _detector->getDetectedBoundingBox();
+    // drawing result
+}
 
-            if (structure)
-            {
-                int width = 0;
-                int height = 0;
 
-                gst_structure_get_int(structure, "width", &width);
-                gst_structure_get_int(structure, "height", &height);
+GstPadProbeReturn
+VideoCapture::cb_have_data (GstPad          *pad,
+                       GstPadProbeInfo *info,
+                       gpointer         user_data)
+{
+    gint x, y;
+    GstMapInfo map;
+    // guint16 *ptr, t;
+    guint16 *t;
+    guint8 *ptr=nullptr;
+    GstBuffer *buffer;
 
-                // Format is I420
+    // g_print("In %s %d \n", __func__,cntr_val++);
 
-                videoCapture->m_frameSize.setWidth(width);
-                videoCapture->m_frameSize.setHeight(height);
-            }
-        }
+    buffer = GST_PAD_PROBE_INFO_BUFFER (info);
 
-        GstMapInfo info;
-        GstBuffer* buffer = gst_sample_get_buffer(sample);
-        gst_buffer_map(buffer, &info, (GstMapFlags)(GST_MAP_READ));
+    buffer = gst_buffer_make_writable (buffer);
 
-        auto _data = info.data;
-        auto _size = info.size;
+    /* Making a buffer writable can fail (for example if it
+   * cannot be copied and is used more than once)
+   */
+    if (buffer == NULL)
+        return GST_PAD_PROBE_OK;
 
-        QByteArray ba((char*)_data, _size);
+    /* Mapping a buffer can fail (non-writable) */
+    if (gst_buffer_map (buffer, &map, GST_MAP_WRITE)) {
 
-        videoCapture->m_frameBuffer = ba;
+        ptr = (guint8 *) map.data;
+        processNewFrame((guint8 *)ptr);
 
-        gst_buffer_unmap(buffer, &info);
-        gst_sample_unref(sample);
+        gst_buffer_unmap (buffer, &map);
 
-        Q_EMIT videoCapture->sigNewFrameReceived();
-
-        return GST_FLOW_OK;
     }
 
-    return GST_FLOW_ERROR;
+    GST_PAD_PROBE_INFO_DATA (info) = buffer;
+
+    return GST_PAD_PROBE_OK;
 }
 
-void VideoCapture::
-setWindowID(const guintptr &windowID)
-{
-    m_windowID = windowID;
-}
 
 bool VideoCapture::
 initialize()
@@ -101,20 +105,14 @@ initialize()
         return false;
     }
 
-    m_gstData.sink = gst_bin_get_by_name(
-                GST_BIN(m_gstData.pipeline),
-                "mysink");
+    m_gstData.conversion = gst_bin_get_by_name (GST_BIN(m_gstData.pipeline), "mysource");
 
-    gst_video_overlay_set_window_handle(
-                GST_VIDEO_OVERLAY(m_gstData.sink),
-                m_windowID);
 
-    m_gstData.fakesink = gst_bin_get_by_name(
-                GST_BIN(m_gstData.pipeline),
-                "myfakesink");
-
-    g_object_set(G_OBJECT(m_gstData.fakesink), "emit-signals", TRUE, "sync", FALSE, NULL);
-    g_signal_connect(m_gstData.fakesink, "new-sample", G_CALLBACK(on_new_sample_from_sink), this);
+    // This section is added to pull out the data buffer for pushing into image processing
+    m_gstData.pad = gst_element_get_static_pad (m_gstData.conversion, "src");
+    gst_pad_add_probe (m_gstData.pad, GST_PAD_PROBE_TYPE_BUFFER,
+                       (GstPadProbeCallback) cb_have_data, NULL, NULL);
+    gst_object_unref (m_gstData.pad);
 
     return true;
 }
@@ -143,29 +141,27 @@ void VideoCapture::stopCapture()
     }
 }
 
-void VideoCapture::
-setForceAspectRatio(bool state)
+void VideoCapture::enableDetecting(const bool &state)
 {
-    if (m_gstData.sink)
-    {
-        g_object_set(G_OBJECT(m_gstData.sink), "force-aspect-ratio", state, NULL);
-    }
+    _detector->enableDetecting(state);
 }
 
-bool VideoCapture::
-isInitialized() const
+void VideoCapture::enableAutoLock(const bool &state)
 {
-    return m_gstData.sink != nullptr;
-}
-
-QByteArray VideoCapture::
-getFrameBuffer() const
-{
-    return m_frameBuffer;
+    _detector->enableAutoLock(state);
 }
 
 QSize VideoCapture::
 getFrameSize() const
 {
     return m_frameSize;
+}
+
+void VideoCapture::setFrameSize(const QSize &frameSize)
+{
+    m_frameSize = frameSize;
+
+    _myVideoCaptureInstance = this;
+
+    _detector->setInputSize(cv::Size(frameSize.width(), frameSize.height()));
 }

@@ -101,17 +101,13 @@ initialize()
                   << errorString.toStdString() << std::endl;
     }
 
-    std::cerr << std::endl;
+    QObject::connect(&m_videoCapture, &VideoCapture::sigAutoLockDetected,
+            this, &Controller::sltAutoLockDetected);
 
-    // ======================================
-    //      Video Capture
-    // ======================================
     m_videoCapture.initialize();
-    m_videoCapture.startCapture();
+    m_videoCapture.setFrameSize(QSize(640, 512));
 
-    //    m_videoCapture.setWindowID(windowsID);
-    //    m_videoCapture.initialize();
-    //    m_videoCapture.startCapture();
+    m_videoCapture.enableDetecting(true);
 }
 
 void Controller::
@@ -508,13 +504,14 @@ void Controller::
 processStartAutoTrack(
         const QRectF &rect)
 {
-
+    m_videoCapture.enableAutoLock(true);
 }
 
 void Controller::
 processStopTrack()
 {
-
+    m_videoCapture.enableDetecting(true);
+    m_videoCapture.enableAutoLock(false);
 }
 
 void Controller::
@@ -644,5 +641,11 @@ void Controller::
 sltNewFrameReceived()
 {
 
+}
+
+void Controller::sltAutoLockDetected(const QRectF &bbox)
+{
+    m_videoCapture.enableDetecting(false);
+    /// start tracker
 }
 
