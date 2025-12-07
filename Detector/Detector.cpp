@@ -17,12 +17,6 @@ Detector::Detector()
     m_autoLockDistanceThreshold = 0.05 * std::min(m_inputSize.width, m_inputSize.height);
     m_autoLockNumberOfDetectedThreshold = 3;
 
-    // Target position Estimation
-    m_isTargetPositionEstimationEnabled = true;
-    m_targetEstimationMemory.resize(3);
-    m_targetEstimationMemoryIndex = 0;
-    m_lastEstimatedTargetPosition = cv::Point(0, 0);
-
     m_detectorSearchRect = cv::Rect(0, 0, m_inputSize.width, m_inputSize.height);
 
     //// Intensity Detector Connection
@@ -179,112 +173,83 @@ IDetector *Detector::createDetectorFactory(SearchAlgorithms algorithm)
 
 void Detector::sltAutoLockChecking()
 {
-    if (m_isAutoLockActivated)
-    {
-        std::vector<IDetector::DetectionInfo> detectionsInfo = m_detector->getAllDetectedObjects();
-        AutoLockInfo autoLockInfo;
-        std::vector<AutoLockInfo> newAutoLockInfo;
-        cv::Rect bbox;
-        cv::Mat checkedDetections = cv::Mat::zeros(m_allAutoLockInfo.size(), 1, CV_8UC1);
-        double minDistanceOfCenter = 10000;
-        cv::Rect satisfiedAutoLockBBox = cv::Rect(0,0,0,0);
+//    if (m_isAutoLockActivated)
+//    {
+//        std::vector<IDetector::DetectionInfo> detectionsInfo = m_detector->getAllDetectedObjects();
+//        AutoLockInfo autoLockInfo;
+//        std::vector<AutoLockInfo> newAutoLockInfo;
+//        cv::Rect bbox;
+//        cv::Mat checkedDetections = cv::Mat::zeros(m_allAutoLockInfo.size(), 1, CV_8UC1);
+//        double minDistanceOfCenter = 10000;
+//        cv::Rect satisfiedAutoLockBBox = cv::Rect(0,0,0,0);
 
-        for (auto it = detectionsInfo.begin(); it != detectionsInfo.end(); ++it) {
-            bbox = it->bbox;
+//        for (auto it = detectionsInfo.begin(); it != detectionsInfo.end(); ++it) {
+//            bbox = it->bbox;
 
-            if (m_allAutoLockInfo.size() > 0)
-            {
-//                cv::Point2d posEstimation;
-//                if (m_allAutoLockInfo.size() == 1)
-//                {
-//                    if (m_isTargetPositionEstimationEnabled)
+//            if (m_allAutoLockInfo.size() > 0)
+//            {
+
+//                for (int i = 0; i < m_allAutoLockInfo.size(); ++i) {
+
+//                    if (checkedDetections.at<uchar>(i, 0) == 1) {
+//                        continue;
+//                    }
+
+//                    AutoLockInfo& info = m_allAutoLockInfo[i];
+
+//                    double distance = m_calculator->centerDistance(bbox, info.bbox);
+
+//                    if (distance < m_autoLockDistanceThreshold)
 //                    {
-//                            // Update the estimation for next frame
-//                            Translation meanTranslation;
-//                            meanTranslation = {0, 0};
-//                            for (size_t i = 0; i < m_targetEstimationMemory.size(); ++i) {
-//                                meanTranslation.horizontal += m_targetEstimationMemory.at(i).horizontal;
-//                                meanTranslation.vertical   += m_targetEstimationMemory.at(i).vertical;
-//                            }
+//                        autoLockInfo.bbox = bbox;
+//                        autoLockInfo.numberOfDetected = info.numberOfDetected + 1;
+//                        newAutoLockInfo.push_back(autoLockInfo);
+//                        checkedDetections.at<uchar>(i, 0) = 1;
 
-//                            posEstimation.x = meanTranslation.horizontal / m_targetEstimationMemory.size();
-//                            posEstimation.y = meanTranslation.vertical / m_targetEstimationMemory.size();
+//                        if (autoLockInfo.numberOfDetected >= m_autoLockNumberOfDetectedThreshold)
+//                        {
+//                            double distanceOfCenter = m_calculator->centerDistance(m_detectorSearchRect, bbox);
+//                            if (distanceOfCenter < minDistanceOfCenter)
+//                            {
+//                                minDistanceOfCenter = distanceOfCenter;
+//                                satisfiedAutoLockBBox = bbox;
+//                            }
+//                        }
 //                    }
 //                }
-
-                for (int i = 0; i < m_allAutoLockInfo.size(); ++i) {
-
-                    if (checkedDetections.at<uchar>(i, 0) == 1) {
-                        continue;
-                    }
-
-                    AutoLockInfo& info = m_allAutoLockInfo[i];
-
-                    double distance = m_calculator->centerDistance(bbox, info.bbox);
-
-                    if (distance < m_autoLockDistanceThreshold)
-                    {
-                        autoLockInfo.bbox = bbox;
-                        autoLockInfo.numberOfDetected = info.numberOfDetected + 1;
-                        newAutoLockInfo.push_back(autoLockInfo);
-                        checkedDetections.at<uchar>(i, 0) = 1;
-
-                        if (autoLockInfo.numberOfDetected >= m_autoLockNumberOfDetectedThreshold)
-                        {
-                            double distanceOfCenter = m_calculator->centerDistance(m_detectorSearchRect, bbox);
-                            if (distanceOfCenter < minDistanceOfCenter)
-                            {
-                                minDistanceOfCenter = distanceOfCenter;
-                                satisfiedAutoLockBBox = bbox;
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {
-                autoLockInfo.bbox = bbox;
-                autoLockInfo.numberOfDetected = 1;
-                newAutoLockInfo.push_back(autoLockInfo);
-            }
-        }
-
-//        if (m_isTargetPositionEstimationEnabled) {
-
-//            if (m_allAutoLockInfo.size() == 1)
-//            {
-//                m_targetEstimationMemory.at(m_targetEstimationMemoryIndex % m_targetEstimationMemory.size()).horizontal
-//                        = m_vectorDetectionResult[0].bbox.x - m_lastEstimatedTargetPosition.x;
-//                m_targetEstimationMemory.at(m_targetEstimationMemoryIndex % m_targetEstimationMemory.size()).vertical
-//                        = m_vectorDetectionResult[0].bbox.y - m_lastEstimatedTargetPosition.y;
-
-//                m_lastEstimatedTargetPosition = cv::Point(m_vectorDetectionResult[0].bbox.x, m_vectorDetectionResult[0].bbox.y);
-
-//                m_targetEstimationMemoryIndex++;
 //            }
 //            else
 //            {
-//                m_targetEstimationMemory.clear();
-//                m_targetEstimationMemoryIndex = 0;
-//                m_lastEstimatedTargetPosition = cv::Point(0, 0);
+//                autoLockInfo.bbox = bbox;
+//                autoLockInfo.numberOfDetected = 1;
+//                newAutoLockInfo.push_back(autoLockInfo);
 //            }
 //        }
 
-        if (satisfiedAutoLockBBox.width > 0 && satisfiedAutoLockBBox.height > 0)
-        {
-            if (isDetectorActivated())
-            {
-                m_allAutoLockInfo.clear();
-                Q_EMIT sigAutoLockDetected(QRectF(satisfiedAutoLockBBox.x,
-                                                  satisfiedAutoLockBBox.y,
-                                                  satisfiedAutoLockBBox.width,
-                                                  satisfiedAutoLockBBox.height));
-            }
-        }
-        else if (!newAutoLockInfo.empty())
-        {
-            m_allAutoLockInfo.clear();
-            m_allAutoLockInfo.assign(newAutoLockInfo.begin(), newAutoLockInfo.end());
-        }
+//        if (satisfiedAutoLockBBox.width > 0 && satisfiedAutoLockBBox.height > 0)
+//        {
+//            if (isDetectorActivated())
+//            {
+//                m_allAutoLockInfo.clear();
+//                Q_EMIT sigAutoLockDetected(QRectF(satisfiedAutoLockBBox.x,
+//                                                  satisfiedAutoLockBBox.y,
+//                                                  satisfiedAutoLockBBox.width,
+//                                                  satisfiedAutoLockBBox.height));
+//            }
+//        }
+//        else if (!newAutoLockInfo.empty())
+//        {
+//            m_allAutoLockInfo.clear();
+//            m_allAutoLockInfo.assign(newAutoLockInfo.begin(), newAutoLockInfo.end());
+//        }
+//    }
+
+    cv::Rect satisfiedAutoLockBBox = m_intensity->getDetectedBoundingBox();
+    if ((!satisfiedAutoLockBBox.empty()) && (satisfiedAutoLockBBox.width > 0) && (satisfiedAutoLockBBox.height > 0))
+    {
+        Q_EMIT sigAutoLockDetected(QRectF(satisfiedAutoLockBBox.x,
+                                                          satisfiedAutoLockBBox.y,
+                                                          satisfiedAutoLockBBox.width,
+                                                          satisfiedAutoLockBBox.height));
     }
 }

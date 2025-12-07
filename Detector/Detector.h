@@ -84,17 +84,6 @@ private:
 
     TrackSizes m_targetSize;
 
-    // Target position Estimation
-    struct Translation {
-        double horizontal;
-        double vertical;
-    };
-
-    bool m_isTargetPositionEstimationEnabled;
-    std::vector<Translation> m_targetEstimationMemory;
-    int m_targetEstimationMemoryIndex;
-    cv::Point m_lastEstimatedTargetPosition;
-
 
 
 private Q_SLOTS:

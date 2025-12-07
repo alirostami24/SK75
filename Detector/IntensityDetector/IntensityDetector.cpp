@@ -17,6 +17,13 @@ IntensityDetector::IntensityDetector() :
 
     m_maxValidDistance = 0.05 * std::min(m_inputSize.width, m_inputSize.height);
     m_numberOfDetectedThreshold = 3;
+
+    // Target position Estimation
+    m_isTargetPositionEstimationEnabled = false;
+    m_targetEstimationMemory.resize(3);
+    m_targetEstimationMemoryIndex = 0;
+    m_lastEstimatedTargetPosition = cv::Point(0, 0);
+    m_distanceTolerance = 3;
 }
 
 IntensityDetector::~IntensityDetector()
@@ -166,6 +173,23 @@ bool IntensityDetector::checkDetectValidity()
 
             if (m_allDetectionValidityInfo.size() > 0)
             {
+                cv::Point2d posEstimation;
+                if (m_allDetectionValidityInfo.size() == 1)
+                {
+                    if ((m_isTargetPositionEstimationEnabled) && (m_targetEstimationMemoryIndex >= m_numberOfDetectedThreshold))
+                    {
+                            // Update the estimation for next frame
+                            Translation meanTranslation;
+                            meanTranslation = {0, 0};
+                            for (size_t i = 0; i < m_targetEstimationMemory.size(); ++i) {
+                                meanTranslation.horizontal += m_targetEstimationMemory.at(i).horizontal;
+                                meanTranslation.vertical   += m_targetEstimationMemory.at(i).vertical;
+                            }
+
+                            posEstimation.x = meanTranslation.horizontal / m_targetEstimationMemory.size();
+                            posEstimation.y = meanTranslation.vertical / m_targetEstimationMemory.size();
+                    }
+                }
                 for (int i = 0; i < m_allDetectionValidityInfo.size(); ++i) {
 
                     if (checkedDetections.at<uchar>(i, 0) == 1) {
@@ -176,7 +200,28 @@ bool IntensityDetector::checkDetectValidity()
 
                     double distance = m_calculator->centerDistance(bbox, info.bbox);
 
-                    if (distance < m_maxValidDistance)
+                    if ((m_isTargetPositionEstimationEnabled) && (isValidPoint(posEstimation)))
+                    {
+                        double maxValidDistance = std::max(posEstimation.x, posEstimation.y);
+                        if (distance < (maxValidDistance * m_distanceTolerance))
+                        {
+                            detectionValidityInfo.bbox = bbox;
+                            detectionValidityInfo.numberOfDetected = info.numberOfDetected + 1;
+                            newDetectionValidityInfo.push_back(detectionValidityInfo);
+                            checkedDetections.at<uchar>(i, 0) = 1;
+
+                            if (detectionValidityInfo.numberOfDetected >= m_numberOfDetectedThreshold)
+                            {
+                                double distanceOfCenter = m_calculator->centerDistance(m_detectorSearchRect, bbox);
+                                if (distanceOfCenter < minDistanceOfCenter)
+                                {
+                                    minDistanceOfCenter = distanceOfCenter;
+                                    satisfiedAutoLockBBox = bbox;
+                                }
+                            }
+                        }
+                    }
+                    else if (distance < m_maxValidDistance)
                     {
                         detectionValidityInfo.bbox = bbox;
                         detectionValidityInfo.numberOfDetected = info.numberOfDetected + 1;
@@ -216,6 +261,18 @@ bool IntensityDetector::checkDetectValidity()
                m_validObjectRect.width = satisfiedAutoLockBBox.width;
                m_validObjectRect.height = satisfiedAutoLockBBox.height;
 
+               if (m_isTargetPositionEstimationEnabled) {
+
+                   m_targetEstimationMemory.at(m_targetEstimationMemoryIndex % m_targetEstimationMemory.size()).horizontal
+                           = satisfiedAutoLockBBox.x - m_lastEstimatedTargetPosition.x;
+                   m_targetEstimationMemory.at(m_targetEstimationMemoryIndex % m_targetEstimationMemory.size()).vertical
+                           = satisfiedAutoLockBBox.y - m_lastEstimatedTargetPosition.y;
+
+                   m_lastEstimatedTargetPosition = cv::Point(satisfiedAutoLockBBox.x, satisfiedAutoLockBBox.y);
+
+                   m_targetEstimationMemoryIndex++;
+               }
+
                return true;
         }
         else if (!newDetectionValidityInfo.empty())
@@ -223,7 +280,32 @@ bool IntensityDetector::checkDetectValidity()
             m_allDetectionValidityInfo.clear();
             m_allDetectionValidityInfo.assign(newDetectionValidityInfo.begin(), newDetectionValidityInfo.end());
             m_validObjectRect = cv::Rect();
+            if (m_isTargetPositionEstimationEnabled) {
+
+                if (newDetectionValidityInfo.size() == 1)
+                {
+                    m_targetEstimationMemory.at(m_targetEstimationMemoryIndex % m_targetEstimationMemory.size()).horizontal
+                            = newDetectionValidityInfo[0].bbox.x - m_lastEstimatedTargetPosition.x;
+                    m_targetEstimationMemory.at(m_targetEstimationMemoryIndex % m_targetEstimationMemory.size()).vertical
+                            = newDetectionValidityInfo[0].bbox.y - m_lastEstimatedTargetPosition.y;
+
+                    m_lastEstimatedTargetPosition = cv::Point(newDetectionValidityInfo[0].bbox.x, newDetectionValidityInfo[0].bbox.y);
+
+                    m_targetEstimationMemoryIndex++;
+                }
+                else
+                {
+                    m_targetEstimationMemory.clear();
+                    m_targetEstimationMemoryIndex = 0;
+                    m_lastEstimatedTargetPosition = cv::Point(0, 0);
+                }
+            }
             return false;
         }
     }
+}
+
+bool IntensityDetector::isValidPoint(const cv::Point2d &point)
+{
+      return !std::isnan(point.x) && !std::isnan(point.y) && std::isfinite(point.x) && std::isfinite(point.y);
 }

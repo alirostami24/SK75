@@ -58,7 +58,7 @@ public:
     /// The approximate center of the object clicked by the user.
     /// \return
     /// A bounding box of ​​the closest detected object.
-    virtual cv::Rect2f getDetectedBoundingBox(const cv::Point2d& targetCenter) const {return cv::Rect2f(-1,-1,0,0);};
+    virtual cv::Rect2f getDetectedBoundingBox(const cv::Point2d& targetCenter = cv::Point2d(0, 0)) const {return cv::Rect2f(-1,-1,0,0);};
 
     ///
     /// \brief getAllDetectedObjects
