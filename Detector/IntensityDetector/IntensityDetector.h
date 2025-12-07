@@ -39,7 +39,7 @@ public:
     /// The approximate center of the object clicked by the user.
     /// \return
     /// A bounding box of ​​the closest detected object.
-    cv::Rect2f getDetectedBoundingBox(const cv::Point2d& targetCenter) const override;
+    cv::Rect2f getDetectedBoundingBox(const cv::Point2d& targetCenter = cv::Point2d(0, 0)) const override;
 
     ///
     /// \brief getAllDetectedObjects
@@ -86,6 +86,7 @@ private:
     };
 
     bool checkDetectValidity();
+    bool isValidPoint(const cv::Point2d& point);
 
     TH *m_thDetector;
     Calculator *m_calculator;
@@ -110,6 +111,17 @@ private:
     int m_numberOfDetectedThreshold;
     cv::Rect2f m_validObjectRect;
 
+    // Target position Estimation
+    struct Translation {
+        double horizontal;
+        double vertical;
+    };
+
+    bool m_isTargetPositionEstimationEnabled;
+    std::vector<Translation> m_targetEstimationMemory;
+    int m_targetEstimationMemoryIndex;
+    cv::Point m_lastEstimatedTargetPosition;
+    double m_distanceTolerance;
 
 Q_SIGNALS:
     void sigAutoLockingIsPossible();
