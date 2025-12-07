@@ -75,10 +75,10 @@ VideoCapture::cb_have_data (GstPad          *pad,
 bool VideoCapture::
 initialize()
 {
-    if (m_windowID == guintptr())
-    {
-        return false;
-    }
+//    if (m_windowID == guintptr())
+//    {
+//        return false;
+//    }
 
 //    QString pipestr = "rtspsrc location=rtsp://192.168.1.100/ch0/stream0 ! "
 //                      "application/x-rtp,media=video,clockrate=90000,"

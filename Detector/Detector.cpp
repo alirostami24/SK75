@@ -177,16 +177,6 @@ IDetector *Detector::createDetectorFactory(SearchAlgorithms algorithm)
     return detector;
 }
 
-void Detector::sltIsDetectorActive()
-{
-
-}
-
-void Detector::sltDetectorActivate()
-{
-
-}
-
 void Detector::sltAutoLockChecking()
 {
     if (m_isAutoLockActivated)
