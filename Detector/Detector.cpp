@@ -100,25 +100,25 @@ cv::Size Detector::getTargetSize(const int &width, const int &height) const
 }
 cv::Rect Detector::getDetectedBoundingBox(const QPointF &position)
 {
-    cv::Rect targetBBox;
+    /*cv::Rect targetBBox;
     cv::Size halfImageSize;
     halfImageSize.width = m_inputSize.width / 2;
     halfImageSize.height = m_inputSize.height / 2;
 
     cv::Point targetCenter_;
     targetCenter_.x = halfImageSize.width + (halfImageSize.width * position.x());
-    targetCenter_.y = halfImageSize.height - (halfImageSize.height * position.y());
+    targetCenter_.y = halfImageSize.height - (halfImageSize.height * position.y());*/
 
-    targetBBox = m_detector->getDetectedBoundingBox(targetCenter_);
+    cv::Rect targetBBox = m_detector->getDetectedBoundingBox();
 
-    if ((targetBBox.width <= 0) && (targetBBox.height <= 0))
+   /* if ((targetBBox.width <= 0) && (targetBBox.height <= 0))
     {
         cv::Size targetSize = getTargetSize(m_inputSize.width, m_inputSize.height);
         targetBBox.x = std::max(0, targetCenter_.x - (targetSize.width / 2));
         targetBBox.y = std::max(0, targetCenter_.y - (targetSize.height / 2));
         targetBBox.width = std::min(m_inputSize.width - targetBBox.x, targetSize.width);
         targetBBox.height = std::min(m_inputSize.height - targetBBox.y, targetSize.height);
-    }
+    }*/
 
     return  targetBBox;
 
