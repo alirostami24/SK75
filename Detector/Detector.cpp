@@ -42,6 +42,7 @@ void Detector::setInputSize(const cv::Size &inputSize)
 {
     m_inputSize = inputSize;
     m_detector->setInputSize(inputSize);
+	m_detector->initialize();
 }
 
 void Detector::enableDetecting(const bool &state)

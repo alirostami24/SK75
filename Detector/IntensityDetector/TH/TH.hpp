@@ -35,15 +35,17 @@ class TH {
 	~TH();
 
     void enableTH(bool state);
-    void init(cv::Rect inputRect, cv::Size inputSize);
+    void init(cv::Size inputSize);
     void run(cv::Mat input);
     cv::Mat getMask();
     cv::Rect getBoundingBox();
+    void setInputSize(const cv::Size& inputSize);
     bool isTHActivated();
     bool isTHInitialized();
     void stopTH();
     void clearMemory();
     void reset();
+
 
 
  private:
@@ -63,7 +65,6 @@ class TH {
     bool m_isTHActivated;
     bool m_isTHInitialized;
 
-    cv::Rect m_inputRect;
     cv::Size m_inputSize;
     cv::Mat m_inputFrame;
     cv::Mat m_inputCroped;

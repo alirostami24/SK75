@@ -15,6 +15,8 @@ public:
     explicit IntensityDetector();
     virtual ~IntensityDetector();
 
+	void initialize() override;
+
     ///
     /// \brief getName
     /// returns the name of detector.
@@ -54,6 +56,7 @@ public:
     ///
     void setInputSize(const cv::Size& inputSize) override;
 
+
     /// \brief enableDetection
     /// Activate and deactive detector
     /// \param state
@@ -79,6 +82,8 @@ public:
     void clearMemory() override;
 
 
+
+
 private:
     struct DetectionValidityInfo {
         int numberOfDetected;
@@ -98,7 +103,6 @@ private:
     cv::Mat m_frame;
 
     cv::Size m_inputSize;
-    cv::Rect m_inputRect;
 
 
     const uint8_t m_minimumLength;

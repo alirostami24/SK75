@@ -12,7 +12,6 @@ IntensityDetector::IntensityDetector() :
     m_isDetectorInitialized = false;
 
     m_frame = cv::Mat(m_inputSize.height, m_inputSize.width, CV_8UC3);
-    m_inputRect = cv::Rect(0, 0, m_inputSize.width, m_inputSize.height);
     m_detectorSearchRect = cv::Rect(0, 0, m_inputSize.width, m_inputSize.height);
 
     m_maxValidDistance = 0.05 * std::min(m_inputSize.width, m_inputSize.height);
@@ -29,6 +28,25 @@ IntensityDetector::IntensityDetector() :
 IntensityDetector::~IntensityDetector()
 {
     delete m_thDetector;
+}
+
+void IntensityDetector::initialize()
+{
+	m_isDetecorActivated = false;
+	m_isDetectorInitialized = false;
+
+	m_frame = cv::Mat(m_inputSize.height, m_inputSize.width, CV_8UC3);
+	m_detectorSearchRect = cv::Rect(0, 0, m_inputSize.width, m_inputSize.height);
+
+	m_maxValidDistance = 0.05 * std::min(m_inputSize.width, m_inputSize.height);
+	m_numberOfDetectedThreshold = 3;
+
+	// Target position Estimation
+	m_isTargetPositionEstimationEnabled = false;
+	m_targetEstimationMemory.resize(3);
+	m_targetEstimationMemoryIndex = 0;
+	m_lastEstimatedTargetPosition = cv::Point(0, 0);
+	m_distanceTolerance = 3;
 }
 
 std::string IntensityDetector::getName() const
@@ -53,7 +71,7 @@ bool IntensityDetector::detect(unsigned char *pData)
 //            // Process frame here
         if (m_thDetector->isTHInitialized() == false)
         {
-            m_thDetector->init(m_inputRect, m_inputSize);
+            m_thDetector->init(m_inputSize);
         }
          m_thDetector->run(m_frame);
 //        auto end = std::chrono::high_resolution_clock::now();
@@ -116,6 +134,7 @@ std::vector<IDetector::DetectionInfo> IntensityDetector::getAllDetectedObjects()
 void IntensityDetector::setInputSize(const cv::Size &inputSize)
 {
     m_inputSize = inputSize;
+    m_thDetector->setInputSize(inputSize);
     m_thDetector->reset();
 }
 
@@ -155,6 +174,7 @@ void IntensityDetector::clearMemory()
     //m_detectorSearchRect = cv::Rect();
     m_thDetector->clearMemory();
 }
+
 
 bool IntensityDetector::checkDetectValidity()
 {

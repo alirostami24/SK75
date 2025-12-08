@@ -16,12 +16,11 @@ void TH::enableTH(bool state)
     m_isTHActivated = state;
 }
 
-void TH::init(cv::Rect inputRect, cv::Size inputSize)
+void TH::init(cv::Size inputSize)
 {
     // Allocate
     m_maskTH.create(inputSize.height, inputSize.width, CV_8UC1);
 
-    m_inputRect = inputRect;
     m_inputSize = inputSize;
 
     kernel_5 = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
@@ -41,22 +40,20 @@ void TH::run(cv::Mat input)
 //    auto start = std::chrono::high_resolution_clock::now();
 
     m_inputFrame = input.clone();
-    m_inputCroped = m_inputFrame(m_inputRect);
-    cv::resize(m_inputCroped, m_inputResized, m_inputSize);
 
     if (m_isTHInitialized == false)
     {
-        init(cv::Rect(0, 0, input.cols, input.rows), cv::Size(input.cols, input.rows));
+        init(cv::Size(input.cols, input.rows));
     }
 
 
-    topHatCentroid(m_inputResized);
+    topHatCentroid(m_inputFrame);
 
-    double widthScale = static_cast<double>(m_inputRect.width) / static_cast<double>(m_maskTH.cols);
-    double heightScale = static_cast<double>(m_inputRect.height) / static_cast<double>(m_maskTH.rows);
+//    double widthScale = static_cast<double>(m_inputRect.width) / static_cast<double>(m_maskTH.cols);
+//    double heightScale = static_cast<double>(m_inputRect.height) / static_cast<double>(m_maskTH.rows);
 
-    m_targetCenteroid.x = widthScale * m_targetCenteroid.x + m_inputRect.x;
-    m_targetCenteroid.y = heightScale * m_targetCenteroid.y + m_inputRect.y;
+//    m_targetCenteroid.x = widthScale * m_targetCenteroid.x + m_inputRect.x;
+//    m_targetCenteroid.y = heightScale * m_targetCenteroid.y + m_inputRect.y;
 
     // Recentring and resizing method
     m_targetBBox = getObjectSizeMethod1(m_targetCenteroid, m_inputFrame.data);
@@ -104,6 +101,11 @@ void TH::reset()
 cv::Rect TH::getBoundingBox()
 {
     return m_targetBBox;
+}
+
+void TH::setInputSize(const cv::Size &inputSize)
+{
+    m_inputSize = inputSize;
 }
 
 void TH::setTargetSize(const cv::Size2d &targetSize)
