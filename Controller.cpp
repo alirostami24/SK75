@@ -101,12 +101,14 @@ initialize()
                   << errorString.toStdString() << std::endl;
     }
 
-    QObject::connect(&m_videoCapture, &VideoCapture::sigAutoLockDetected,
-            this, &Controller::sltAutoLockDetected);
+    // ======================================
+    //      Streaming & Detector
+    // ======================================
+    cv::namedWindow("SK75", cv::WINDOW_FULLSCREEN);
 
     m_videoCapture.initialize();
-    m_videoCapture.setFrameSize(QSize(640, 512));
-
+    m_videoCapture.setFrameSize(QSize(720, 576));
+    m_videoCapture.startCapture();
     m_videoCapture.enableDetecting(true);
 }
 
@@ -122,7 +124,11 @@ initializeConnections()
             this, &Controller::sltCameraNewDataRecieved);
 
     connect(&m_videoCapture, &VideoCapture::
-            sigNewFrameReceived, this,
+            sigAutoLockDetected,this,
+            &Controller::sltAutoLockDetected);
+
+    connect(&m_videoCapture, &VideoCapture::
+            sigNewFrameReceived,this,
             &Controller::sltNewFrameReceived);
 }
 
@@ -483,6 +489,12 @@ interpretCameraPacket(
     const bool trackingState =
             (byte2 & 0x02) >> 1;
 
+    if (trackingState == false)
+    {
+        m_videoCapture.enableDetecting(true);
+        m_videoCapture.enableAutoLock(false);
+    }
+
     //    m_mainWindow.setTrackState(trackingState);
 }
 
@@ -512,6 +524,8 @@ processStopTrack()
 {
     m_videoCapture.enableDetecting(true);
     m_videoCapture.enableAutoLock(false);
+
+    stopCameraTrack();
 }
 
 void Controller::
@@ -638,14 +652,36 @@ sltCameraNewDataRecieved(
 }
 
 void Controller::
-sltNewFrameReceived()
-{
-
-}
-
-void Controller::sltAutoLockDetected(const QRectF &bbox)
+sltAutoLockDetected(const QRectF &bbox)
 {
     m_videoCapture.enableDetecting(false);
     /// start tracker
+
+    const QSize frameSize =
+            m_videoCapture.getFrameSize();
+
+    const QPointF centerPos = bbox.center();
+
+    const QPointF realValue(
+                centerPos.x() -
+                (frameSize.width() / 2),
+                centerPos.y() -
+                (frameSize.height() / 2));
+
+    startCameraTrack(realValue.x(), realValue.y());
+}
+
+void Controller::
+sltNewFrameReceived()
+{
+    QByteArray buffer =
+            m_videoCapture.getFrameBuffer();
+
+    cv::Mat frame = cv::Mat(
+                m_videoCapture.getFrameSize().height(),
+                m_videoCapture.getFrameSize().width(),
+                CV_8UC3, (void*)(buffer.data()));
+
+    cv::imshow("SK75", frame);
 }
 
