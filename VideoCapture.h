@@ -26,6 +26,7 @@ public:
     void enableDetecting(const bool& state);
     void enableAutoLock(const bool& state);
 
+    QByteArray getFrameBuffer();
     QSize getFrameSize() const;
     void setFrameSize(const QSize &frameSize);
 
@@ -33,7 +34,7 @@ private:
     struct GST_Data
     {
         GstElement *pipeline;
-        GstElement *conversion;
+        GstElement *sink;
 
         GstPad *pad;
 
@@ -44,6 +45,9 @@ private:
         }
     };
 
+    cv::Mat m_bgrFrame;
+    cv::Mat m_I420_Frame;
+
     GST_Data m_gstData;
 
     Detector m_detector;
@@ -51,7 +55,8 @@ private:
     QByteArray m_frameBuffer;
     QSize m_frameSize;
 
-    static GstPadProbeReturn cb_have_data(GstPad *pad, GstPadProbeInfo *info, gpointer user_data);
+    static GstFlowReturn on_new_sample_from_sink(GstElement* sink, gpointer user_data);
+
     static void processNewFrame(guint8 *pData);
 
 private Q_SLOTS:

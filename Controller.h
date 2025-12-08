@@ -87,8 +87,7 @@ private Q_SLOTS:
     void sltCameraNewDataRecieved(
             const QByteArray &packet);
 
-    void sltNewFrameReceived();
-
     void sltAutoLockDetected(const QRectF &bbox);
+    void sltNewFrameReceived();
 
 };
