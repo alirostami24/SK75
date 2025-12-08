@@ -88,6 +88,5 @@ private Q_SLOTS:
             const QByteArray &packet);
 
     void sltAutoLockDetected(const QRectF &bbox);
-    void sltNewFrameReceived();
 
 };

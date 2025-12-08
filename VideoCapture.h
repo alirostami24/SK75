@@ -3,64 +3,85 @@
 
 #include <iostream>
 
+#include <QRect>
 #include <QSize>
 #include <QDebug>
-#include <QString>
-#include <QWidget>
+#include <QObject>
+#include <QCalendar>
+#include <QDateTime>
 
 #include "gst/gst.h"
-#include "gst/video/videooverlay.h"
+#include <gst/app/gstappsink.h>
+#include <gst/app/gstappsrc.h>
+
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+#include "ControlPanelSDK.h"
+#include "TypeCastings_global.h"
+
 #include "Detector/Detector.h"
 
 class VideoCapture : public QObject
 {
     Q_OBJECT
 
-public:
-    VideoCapture();
-
-    bool initialize();
-    void startCapture();
-    void stopCapture();
-
-    void enableDetecting(const bool& state);
-    void enableAutoLock(const bool& state);
-
-    QByteArray getFrameBuffer();
-    QSize getFrameSize() const;
-    void setFrameSize(const QSize &frameSize);
-
-private:
-    struct GST_Data
+    struct Data
     {
-        GstElement *pipeline;
-        GstElement *sink;
-
-        GstPad *pad;
-
-        GST_Data()
-        {
-            pipeline = nullptr;
-            pad = nullptr;
-        }
+        GstElement* pipeline = Q_NULLPTR;
+        GstElement* sink = Q_NULLPTR;
+        GstElement* source = Q_NULLPTR;
+        GstElement* window = Q_NULLPTR;
+        GstElement* valve = Q_NULLPTR;
+        GstBus* bus = Q_NULLPTR;
+        GstPad *pad = Q_NULLPTR;
     };
 
-    cv::Mat m_bgrFrame;
-    cv::Mat m_I420_Frame;
+private:
+    QSize m_resolution;
+    Data m_data;
+    bool m_isDetectorInitialized;
 
-    GST_Data m_gstData;
+private:
+    static GstFlowReturn on_new_sample_from_sink(
+            GstElement* sink,
+            gpointer user_data);
 
+    static gboolean bus_message(
+            GstBus* bus, GstMessage* msg,
+            gpointer user_data);
+
+    static GstPadProbeReturn modifyBuffer(
+            GstPad *pad,
+            GstPadProbeInfo *info,
+            gpointer user_data);
+
+public:
+    explicit VideoCapture();
+    ~VideoCapture();
+
+    void initialize();
+    void finalize();
+    void start();
+    void stop();
+
+    void setResolution(
+            const QSize& resolution);
+
+    void enableDetecting(const bool &state);
+    void enableAutoLock(const bool &state);
+
+    cv::Size frameSize() const;
+
+private:
     Detector m_detector;
 
-    QByteArray m_frameBuffer;
-    QSize m_frameSize;
+    cv::Size m_frameSize;
+    int m_frameCounter;
 
-    static GstFlowReturn on_new_sample_from_sink(GstElement* sink, gpointer user_data);
-
-    static void processNewFrame(guint8 *pData);
-
-private Q_SLOTS:
-    void sltDetectionDataUpdated();
+    static void processNewFrame(cv::Mat &frame,
+            VideoCapture *videoCapture);
 
 Q_SIGNALS:
     void sigNewFrameReceived();

@@ -1,84 +1,14 @@
 #include "VideoCapture.h"
 
-static VideoCapture* _myVideoCaptureInstance;
-static Detector* _detector;
-
-VideoCapture::
-VideoCapture()
-{
-    //    QObject::connect(_detector, &Detector::sigAutoLockDetected,
-    //                     this, &VideoCapture::sigAutoLockDetected);
-
-    //    QObject::connect(_detector, &Detector::sigDetectionDataUpdated,
-    //                     this, &VideoCapture::sltDetectionDataUpdated);
-}
-
-void VideoCapture::processNewFrame(guint8 *pData)
-{
-    cv::Mat frame = cv::Mat(_myVideoCaptureInstance->getFrameSize().height(),
-                            _myVideoCaptureInstance->getFrameSize().width(),
-                            CV_8UC3, (void*)(pData));
-
-//    cv::Mat *bgrFrame = &_myVideoCaptureInstance->m_bgrFrame;
-
-    if (_detector->isDetectorActivated())
-    {
-        _detector->detect(&frame);
-
-        const auto objects = _detector->getAllDetectedObjects();
-
-        for (auto item : objects)
-        {
-            cv::rectangle(frame,item.bbox,
-                          cv::Scalar(0, 0, 255), 2);
-        }
-
-//        cv::Rect rect(40, 40, 50, 50);
-
-//        cv::rectangle(frame, rect,
-//                      cv::Scalar(0, 255, 255));
-    }
-}
-
-void VideoCapture::sltDetectionDataUpdated()
-{
-    cv::Rect objectRect = _detector->getDetectedBoundingBox();
-    // drawing result
-}
-
+/* called when the appsink notifies us that there is a new buffer ready for
+ * processing */
 GstFlowReturn
 VideoCapture::on_new_sample_from_sink(GstElement* sink, gpointer user_data)
 {
-    VideoCapture* videoCapture =
-            static_cast<VideoCapture*>(user_data);
-
+    VideoCapture* videoCapture = static_cast<VideoCapture*>(user_data);
     GstSample* sample;
-    GstCaps *caps;
-    GstStructure *structure;
     g_signal_emit_by_name(sink, "pull-sample", &sample);
-
-    if (sample)
-    {
-        caps = gst_sample_get_caps(sample);
-
-        if (caps)
-        {
-            structure = gst_caps_get_structure(caps, 0);
-
-            if (structure)
-            {
-                int width = 0;
-                int height = 0;
-
-                gst_structure_get_int(structure, "width", &width);
-                gst_structure_get_int(structure, "height", &height);
-
-                // Format is I420
-                videoCapture->m_frameSize.setWidth(width);
-                videoCapture->m_frameSize.setHeight(height);
-            }
-        }
-
+    if (sample) {
         GstMapInfo info;
         GstBuffer* buffer = gst_sample_get_buffer(sample);
         gst_buffer_map(buffer, &info, (GstMapFlags)(GST_MAP_READ));
@@ -86,180 +16,248 @@ VideoCapture::on_new_sample_from_sink(GstElement* sink, gpointer user_data)
         auto _data = info.data;
         auto _size = info.size;
 
+        //qCritical() << "xxxxxxx: on_new_sample_from_sink  BGR " << _size;
 
-        auto startTime = std::chrono::system_clock::now();
+        QByteArray ba((char*)_data, _size);
+        gst_buffer_unmap(buffer, &info);
+        gst_sample_unref(sample);
 
-        processNewFrame(_data);
-
-        auto stopTime = std::chrono::system_clock::now();
-
-        videoCapture->m_frameBuffer =
-                QByteArray((char*)_data, _size);
-
-        std::cerr << "process time duration: " <<
-                     std::chrono::duration_cast<std::chrono::milliseconds>(
-                         stopTime - startTime).count() << std::endl;
-
-        gst_buffer_unmap (buffer, &info);
-
-        Q_EMIT videoCapture->sigNewFrameReceived();
-
+        //Q_EMIT videoCapture->sigFrameReady(ba);
         return GST_FLOW_OK;
     }
 
     return GST_FLOW_ERROR;
 }
 
-
-//GstPadProbeReturn
-//VideoCapture::cb_have_data (GstPad          *pad,
-//                            GstPadProbeInfo *info,
-//                            gpointer         user_data)
-//{
-//    VideoCapture *videoCapture =
-//            static_cast<VideoCapture*>(user_data);
-
-//    gint x, y;
-//    GstMapInfo map;
-//    // guint16 *ptr, t;
-//    guint16 *t;
-//    guint8 *ptr=nullptr;
-//    GstBuffer *buffer;
-
-//    // g_print("In %s %d \n", __func__,cntr_val++);
-
-//    buffer = GST_PAD_PROBE_INFO_BUFFER (info);
-
-//    buffer = gst_buffer_make_writable (buffer);
-
-//    /* Making a buffer writable can fail (for example if it
-//   * cannot be copied and is used more than once)
-//   */
-//    if (buffer == NULL)
-//    {
-//        return GST_PAD_PROBE_OK;
-//    }
-
-//    /* Mapping a buffer can fail (non-writable) */
-//    if (gst_buffer_map (buffer, &map, GST_MAP_WRITE))
-//    {
-//        ptr = (guint8 *) map.data;
-//        processNewFrame((guint8 *)ptr);
-
-//        gst_buffer_unmap (buffer, &map);
-//    }
-
-//    //    GST_PAD_PROBE_INFO_DATA (info) = buffer;
-
-//    return GST_PAD_PROBE_OK;
-//}
-
-
-bool VideoCapture::
-initialize()
+gboolean VideoCapture::bus_message(GstBus* bus, GstMessage* msg, gpointer user_data)
 {
-    //    if (m_windowID == guintptr())
-    //    {
-    //        return false;
-    //    }
 
-    //    QString pipestr = "rtspsrc location=rtsp://192.168.1.100/ch0/stream0 ! "
-    //                      "application/x-rtp,media=video,clockrate=90000,"
-    //                      "encoding-name=H264,payload=96 ! rtph264depay ! "
-    //                      "h264parse ! avdec_h264 ! videoconvert ! tee name=t ! "
-    //                      "queue ! d3dvideosink sync=false name=mysink "
-    //                      "force-aspect-ratio=false enable-navigation-events=false t. ! "
-    //                      "queue ! appsink name=myfakesink sync=false";
+    VideoCapture* videoCapture = static_cast<VideoCapture*>(user_data);
 
-    QString pipestr = "rtspsrc location=rtsp://192.168.1.100/ch0/stream0 latency=100 protocols=udp ! "
-                      "rtpjitterbuffer latency=100 ! rtph264depay ! h264parse ! "
-                      "nvv4l2decoder enable-max-performance=true ! nvvidconv ! "
-                      "videoconvert name=mysource ! video/x-raw,format=BGR ! "
-                      "appsink name=mysink sync=false";
+    switch (GST_MESSAGE_TYPE(msg)) {
 
-    GError *error = NULL;
-    m_gstData.pipeline = gst_parse_launch(
-                pipestr.toLatin1().data(), &error);
+    case GST_MESSAGE_EOS:
 
-    if (error != NULL)
-    {
-        qCritical() << "Cannot initialize pipeline.\n"
-                    << int(error->code) << error->message;
+        break;
 
-        return false;
+    case GST_MESSAGE_ERROR: {
+        gchar* debug;
+        GError* error;
+
+        gst_message_parse_error(msg, &error, &debug);
+        g_free(debug);
+        g_printerr("Error: %s\n", error->message);
+        g_error_free(error);
+        break;
+    }
     }
 
-    m_gstData.sink = gst_bin_get_by_name(
-                GST_BIN(m_gstData.pipeline),
-                "mysink");
-
-    g_object_set(G_OBJECT(m_gstData.sink), "emit-signals", TRUE, "sync", FALSE, NULL);
-    g_signal_connect(m_gstData.sink, "new-sample", G_CALLBACK(on_new_sample_from_sink), this);
-
-    return true;
+    return TRUE;
 }
 
-void VideoCapture::startCapture()
+GstPadProbeReturn VideoCapture::
+modifyBuffer(GstPad *pad,
+             GstPadProbeInfo *info,
+             gpointer user_data)
 {
-    if (m_gstData.pipeline != nullptr)
+    VideoCapture *videoCapture =
+            static_cast<VideoCapture*>(user_data);
+
+    GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+    buffer = gst_buffer_make_writable(buffer);
+
+    if (buffer == nullptr)
     {
-        gst_element_set_state(
-                    GST_ELEMENT(m_gstData.pipeline),
-                    GST_STATE_PLAYING);
+        return GST_PAD_PROBE_OK;
     }
-}
 
-void VideoCapture::stopCapture()
-{
-    if (m_gstData.pipeline != nullptr)
+    GstCaps *caps = gst_pad_get_current_caps(pad);
+
+    if (caps == nullptr)
     {
-        gst_element_set_state(
-                    GST_ELEMENT(m_gstData.pipeline),
-                    GST_STATE_NULL);
-
-        gst_object_unref(m_gstData.pipeline);
-
-        m_gstData.pipeline = nullptr;
+        return GST_PAD_PROBE_OK;
     }
+
+    GstStructure *structure =
+            gst_caps_get_structure(caps, 0);
+
+    if (structure == nullptr)
+    {
+        return GST_PAD_PROBE_OK;
+    }
+
+    cv::Size *size = &videoCapture->m_frameSize;
+
+    gst_structure_get_int(
+                structure, "width",
+                &size->width);
+
+    gst_structure_get_int(
+                structure, "height",
+                &size->height);
+
+    std::string format =
+            gst_structure_get_string(
+                structure, "format");
+
+    if (format != "BGRA")
+    {
+        return GST_PAD_PROBE_OK;
+    }
+
+    bool *isInitialized =
+            &videoCapture->
+            m_isDetectorInitialized;
+
+    if (*isInitialized == false)
+    {
+        videoCapture->m_detector.
+                setInputSize(*size);
+
+        *isInitialized = true;
+    }
+
+    GstMapInfo map;
+
+    if (gst_buffer_map(buffer, &map, GST_MAP_WRITE))
+    {
+        cv::Mat bgraMat(size->height, size->width,
+                        CV_8UC4, (void *)map.data);
+
+        processNewFrame(bgraMat, videoCapture);
+
+        gst_buffer_unmap(buffer, &map);
+    }
+
+    return GST_PAD_PROBE_OK;
 }
 
-void VideoCapture::enableDetecting(const bool &state)
+void VideoCapture::
+setResolution(const QSize &resolution)
 {
-    _detector->enableDetecting(state);
+    m_resolution = resolution;
 }
 
-void VideoCapture::enableAutoLock(const bool &state)
+void VideoCapture::
+enableDetecting(const bool &state)
 {
-    _detector->enableAutoLock(state);
+    m_detector.enableDetecting(state);
 }
 
-QByteArray VideoCapture::
-getFrameBuffer()
+void VideoCapture::
+enableAutoLock(const bool &state)
 {
-    return m_frameBuffer;
+    m_detector.enableAutoLock(state);
 }
 
-QSize VideoCapture::
-getFrameSize() const
+cv::Size VideoCapture::
+frameSize() const
 {
     return m_frameSize;
 }
 
-void VideoCapture::setFrameSize(const QSize &frameSize)
+void VideoCapture::
+processNewFrame(cv::Mat &frame,
+                VideoCapture *videoCapture)
 {
-    m_frameSize = frameSize;
+    Detector *detector = &videoCapture->m_detector;
 
-    m_bgrFrame = cv::Mat(frameSize.height(),
-                         frameSize.width(),
-                         CV_8UC3);
+    if (detector->isDetectorActivated())
+    {
+        detector->detect(&frame);
 
-//    m_I420_Frame = cv::Mat(frameSize.height(),
-//                           frameSize.width(),
-//                           CV_8UC1);
+        const auto objects =
+                detector->getAllDetectedObjects();
 
-    _myVideoCaptureInstance = this;
-
-    _detector = new Detector();
-
-    _detector->setInputSize(cv::Size(frameSize.width(), frameSize.height()));
+        for (auto item : objects)
+        {
+            cv::rectangle(frame,item.bbox,
+                          cv::Scalar(0, 0, 255), 2);
+        }
+    }
 }
+
+VideoCapture::
+VideoCapture() :
+    m_isDetectorInitialized(false)
+{
+    m_frameCounter = 0;
+
+    connect(&m_detector, &Detector::sigAutoLockDetected,
+            this, &VideoCapture::sigAutoLockDetected);
+}
+
+VideoCapture::
+~VideoCapture()
+{
+
+}
+
+void VideoCapture::initialize()
+{
+    QString pipeStr;
+
+#if defined(DUMMY_VIDEO)
+    QString sink = "xvimagesink";
+
+#if defined(_WIN64) || defined(_WIN32)
+    sink = "autovideosink";
+#endif
+
+    pipeStr = "videotestsrc pattern=18 ! "
+              "video/x-raw,format=BGRA,width=720,height=576,framerate=30/1 ! "
+              "videocrop top=0 bottom=0 left=0 right=0 name=yuy2Source ! " + sink;;
+
+#else
+    pipeStr= "rtspsrc location=rtsp://192.168.1.100/ch0/stream0 latency=100 protocols=udp ! "
+             "rtpjitterbuffer latency=100 ! rtph264depay ! h264parse ! "
+             "nvv4l2decoder enable-max-performance=true ! nvvidconv ! "
+             "videoconvert ! video/x-raw,format=BGR ! "
+             "videocrop top=0 bottom=0 left=0 right=0 name=mysource ! "
+             "appsink name=mysink sync=false";
+#endif
+
+    std::cerr << "\n pipeStr: "
+              << pipeStr.toStdString()
+              << std::endl;
+
+    m_data.pipeline = gst_parse_launch(
+                pipeStr.toLatin1().data(), NULL);
+
+    // To get YUY2 buffer
+    m_data.source = gst_bin_get_by_name(
+                GST_BIN(m_data.pipeline), "yuy2Source");
+
+    m_data.pad = gst_element_get_static_pad(
+                m_data.source, "src");
+
+    gst_pad_add_probe(m_data.pad, GST_PAD_PROBE_TYPE_BUFFER,
+                      modifyBuffer,
+                      reinterpret_cast<gpointer>(this), NULL);
+
+    gst_object_unref(m_data.pad);
+
+    m_data.bus = gst_pipeline_get_bus(GST_PIPELINE(m_data.pipeline));
+
+    gst_bus_add_watch(m_data.bus, (GstBusFunc)bus_message, this);
+
+    gst_object_unref(m_data.bus);
+}
+
+void VideoCapture::start()
+{
+    if (m_data.pipeline) {
+        gst_element_set_state(GST_ELEMENT(m_data.pipeline), GST_STATE_PLAYING);
+    }
+}
+
+void VideoCapture::stop()
+{
+    if (m_data.pipeline) {
+        gst_element_set_state(m_data.pipeline, GST_STATE_NULL);
+        gst_object_unref(m_data.pipeline);
+        m_data.pipeline = Q_NULLPTR;
+    }
+}
+
+
