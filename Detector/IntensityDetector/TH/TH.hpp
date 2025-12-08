@@ -49,6 +49,10 @@ class TH {
 
 
  private:
+	 struct CandidateInfo {
+		 double mediumHeat;
+		 cv::Rect bbox;
+	 };
     void topHatCentroid(const cv::Mat& input);
     cv::Rect resizeObjectWithOTSUMethod1(const cv::Size2d& targetSize, const cv::Point2d& targetCenter, unsigned char *pData);
     cv::Rect resizeObjectWithOTSUMethod2(const cv::Size2d& targetSize, const cv::Point2d& targetCenter, unsigned char *pData);
@@ -80,6 +84,9 @@ class TH {
 
     float m_validMarginRatio;
     float m_tolerance;
+
+	std::vector< CandidateInfo > m_candidatesInfo;
+	double m_minValidHeat;
 };
 
 #endif				//TH_H

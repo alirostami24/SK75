@@ -4,6 +4,7 @@ TH::TH()
 {
     m_isTHActivated = false;
     m_isTHInitialized = false;
+	m_minValidHeat = 50;
 }
 
 TH::~TH()
@@ -55,11 +56,19 @@ void TH::run(cv::Mat input)
 //    m_targetCenteroid.x = widthScale * m_targetCenteroid.x + m_inputRect.x;
 //    m_targetCenteroid.y = heightScale * m_targetCenteroid.y + m_inputRect.y;
 
-    // Recentring and resizing method
-    m_targetBBox = getObjectSizeMethod1(m_targetCenteroid, m_inputFrame.data);
+	if ((m_targetCenteroid.x > 0) && (m_targetCenteroid.y > 0))
+	{
+		// Recentring and resizing method
+		m_targetBBox = getObjectSizeMethod1(m_targetCenteroid, m_inputFrame.data);
 
-    // Only resizing with OTSU
-    //m_targetBBox = getObjectSizeMethod2(m_targetCenteroid, m_inputFrame.data);
+		// Only resizing with OTSU
+		//m_targetBBox = getObjectSizeMethod2(m_targetCenteroid, m_inputFrame.data);
+	}
+	else
+	{
+		m_targetBBox = cv::Rect(-1, -1, -1, -1);
+	}
+    
 
 //    auto end = std::chrono::high_resolution_clock::now();
 //    std::chrono::duration<double, std::milli> duration = end - start;
@@ -232,12 +241,14 @@ void TH::topHatCentroid(const cv::Mat &input)
     } else {
         gray = input;  // If already grayscale, use as is
     }
-    cv::medianBlur(gray, gray, 5);
+	cv::Mat blurMat;
+    cv::medianBlur(gray, blurMat, 5);
 
-    cv::morphologyEx(gray, gray, cv::MORPH_TOPHAT, kernel_3);
+	cv::Mat topHatMat;
+    cv::morphologyEx(blurMat, topHatMat, cv::MORPH_TOPHAT, kernel_3);
 
     cv::Mat normMat;
-    cv::normalize(gray, normMat, 0, 255, cv::NORM_MINMAX);
+    cv::normalize(topHatMat, normMat, 0, 255, cv::NORM_MINMAX);
 
 
     //double minVal, maxVal;
@@ -247,16 +258,74 @@ void TH::topHatCentroid(const cv::Mat &input)
     cv::Mat thresh_binary;
     cv::threshold(normMat, thresh_binary, 200, 255, cv::THRESH_BINARY);
 
-    cv::Mat closing_result;
-    //cv::morphologyEx(thresh_binary, closing_result, cv::MORPH_CLOSE, kernel_5);
-    cv::dilate(thresh_binary, closing_result, kernel_5, cv::Point(-1, -1), 1);
+    cv::Mat dilate_result;
+    cv::dilate(thresh_binary, dilate_result, kernel_5, cv::Point(-1, -1), 1);
 
-    cv::morphologyEx(closing_result, m_maskTH, cv::MORPH_OPEN, kernel_5);
+	cv::Mat opening_result;
+    cv::morphologyEx(dilate_result, opening_result, cv::MORPH_OPEN, kernel_5);
 
-    cv::Moments moments = cv::moments(m_maskTH);
+	cv::Mat labels, stats, centroids;
+	int numComponents = cv::connectedComponentsWithStats(opening_result, labels, stats, centroids);
+
+	int imageArea = opening_result.rows * opening_result.cols;
+	int wValidMargin = std::max(10, static_cast<int>(opening_result.cols * 0.01));
+	int hValidMargin = std::max(10, static_cast<int>(opening_result.rows * 0.01));
+	
+	//cv::Mat mask = cv::Mat::zeros(opening_result.size(), opening_result.type());
+	m_candidatesInfo.clear();
+	CandidateInfo candidateInfo;
+	cv::Mat grayObject;
+	double meanObjectHeat;
+	for (int i = 1; i < numComponents; ++i) {
+		if (stats.at<int>(i, 4) < imageArea * 0.5)
+		{
+			cv::Rect bbox(stats.at<int>(i, 0), stats.at<int>(i, 1), stats.at<int>(i, 2), stats.at<int>(i, 3));
+			if ((bbox.x > wValidMargin) &&
+				(bbox.y > hValidMargin) &&
+				((opening_result.cols - (bbox.x + bbox.width)) > wValidMargin) &&
+				((opening_result.rows - (bbox.y + bbox.height)) > hValidMargin)
+				)
+			{
+				grayObject = gray(bbox).clone();
+				meanObjectHeat = cv::mean(grayObject)[0];
+				if (meanObjectHeat > m_minValidHeat)
+				{
+					candidateInfo.bbox = bbox;
+					candidateInfo.mediumHeat = meanObjectHeat;
+					m_candidatesInfo.push_back(candidateInfo);
+				}
+			}
+
+		}
+
+	}
+
+	
+	if (m_candidatesInfo.size() > 0)
+	{
+		double maxHeat = 0;
+		cv::Rect bbox;
+		for (int i = 0; i < m_candidatesInfo.size(); i++)
+		{
+			if (m_candidatesInfo[i].mediumHeat > maxHeat)
+			{
+				bbox = m_candidatesInfo[i].bbox;
+				maxHeat = m_candidatesInfo[i].mediumHeat;
+			}
+		}
+
+		m_targetCenteroid.x = bbox.x + (bbox.width / 2);
+		m_targetCenteroid.y = bbox.y + (bbox.height / 2);
+	}
+	else
+	{
+		m_targetCenteroid.x = -1;
+		m_targetCenteroid.y = -1;
+	}
+    /*cv::Moments moments = cv::moments(m_maskTH);
 
     m_targetCenteroid.x = moments.m10 / moments.m00;
-    m_targetCenteroid.y = moments.m01 / moments.m00;
+    m_targetCenteroid.y = moments.m01 / moments.m00;*/
 
 }
 

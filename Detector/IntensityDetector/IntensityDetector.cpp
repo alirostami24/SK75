@@ -90,9 +90,16 @@ bool IntensityDetector::detect(unsigned char *pData)
 
             m_vectorDetectionResult.clear();
             m_vectorDetectionResult.push_back(result);
+			isResutvalid = checkDetectValidity();
         }
+		else
+		{
+			m_allDetectionValidityInfo.clear();
+			m_validObjectRect = cv::Rect(-1, -1, -1, -1);
+			isResutvalid = false;
+		}
 
-        isResutvalid = checkDetectValidity();
+        
         if (isResutvalid)
         {
             Q_EMIT sigDetectionDataUpdated();
@@ -299,7 +306,7 @@ bool IntensityDetector::checkDetectValidity()
         {
             m_allDetectionValidityInfo.clear();
             m_allDetectionValidityInfo.assign(newDetectionValidityInfo.begin(), newDetectionValidityInfo.end());
-            m_validObjectRect = cv::Rect();
+            m_validObjectRect = cv::Rect(-1, -1, -1, -1);
             if (m_isTargetPositionEstimationEnabled) {
 
                 if (newDetectionValidityInfo.size() == 1)
@@ -322,6 +329,12 @@ bool IntensityDetector::checkDetectValidity()
             }
             return false;
         }
+		else
+		{
+			m_allDetectionValidityInfo.clear();
+			m_validObjectRect = cv::Rect(-1, -1, -1, -1);
+			return false;
+		}
     }
 }
 
