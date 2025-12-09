@@ -104,10 +104,6 @@ private:
 
     cv::Size m_inputSize;
 
-
-    const uint8_t m_minimumLength;
-    quint8 m_coreAppID;
-    quint8 m_detectorID;
     bool m_isDetectorInitialized;
 
     std::vector<DetectionValidityInfo> m_allDetectionValidityInfo;

@@ -1,10 +1,9 @@
 #include "IntensityDetector.h"
 
-IntensityDetector::IntensityDetector() :
-    m_minimumLength(8)
+IntensityDetector::IntensityDetector()
 {
-    m_inputSize.width = 640;
-    m_inputSize.height = 512;
+    m_inputSize.width = 720;
+    m_inputSize.height = 576;
 
     m_thDetector = new TH();
 
@@ -83,8 +82,6 @@ bool IntensityDetector::detect(unsigned char *pData)
 
         cv::Rect targetBBox = m_thDetector->getBoundingBox();
 
-        std::cerr << "targetBBox x: " << targetBBox.x << " y: " << targetBBox.y <<
-                     " w: " << targetBBox.width << " h: " << targetBBox.height << std::endl;
         if ((targetBBox.width > 0) && (targetBBox.height > 0))
         {
             IDetector::DetectionInfo result;
@@ -94,7 +91,6 @@ bool IntensityDetector::detect(unsigned char *pData)
             m_vectorDetectionResult.clear();
             m_vectorDetectionResult.push_back(result);
 			isResutvalid = checkDetectValidity();
-            std::cerr << "isResutvalid: " << isResutvalid << std::endl;
         }
 		else
 		{
@@ -311,7 +307,6 @@ bool IntensityDetector::checkDetectValidity()
         }
         else if (!newDetectionValidityInfo.empty())
         {
-            std::cerr << "newDetectionValidityInfo: size: " << newDetectionValidityInfo.size() << std::endl;
             m_allDetectionValidityInfo.clear();
             m_allDetectionValidityInfo.assign(newDetectionValidityInfo.begin(), newDetectionValidityInfo.end());
             m_validObjectRect = cv::Rect(-1, -1, -1, -1);
