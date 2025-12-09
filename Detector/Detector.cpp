@@ -40,6 +40,7 @@ bool Detector::isDetectorActivated()
 
 void Detector::setInputSize(const cv::Size &inputSize)
 {
+    std::cerr << "set input size: w: " << inputSize.width << " h: " << inputSize.height << std::endl;
     m_inputSize = inputSize;
     m_detector->setInputSize(inputSize);
 	m_detector->initialize();
@@ -70,7 +71,8 @@ std::string Detector::getName()
 
 void Detector::detect(cv::Mat *input)
 {
-    m_detector->detect(input->data);
+    cv::cvtColor(*input, m_frame, cv::COLOR_BGRA2BGR);
+    m_detector->detect(m_frame.data);
 }
 
 cv::Size Detector::getTargetSize(const int &width, const int &height) const
@@ -110,7 +112,8 @@ cv::Rect Detector::getDetectedBoundingBox(const QPointF &position)
     targetCenter_.y = halfImageSize.height - (halfImageSize.height * position.y());*/
 
     cv::Rect targetBBox = m_detector->getDetectedBoundingBox();
-
+    std::cerr << "detector x: " << targetBBox.x << " y: " << targetBBox.y <<
+                 " w: " << targetBBox.width << " h: " << targetBBox.height << std::endl;
    /* if ((targetBBox.width <= 0) && (targetBBox.height <= 0))
     {
         cv::Size targetSize = getTargetSize(m_inputSize.width, m_inputSize.height);

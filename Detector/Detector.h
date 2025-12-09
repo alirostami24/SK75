@@ -63,6 +63,8 @@ private:
     // Factory method element
     IDetector* m_detector;
 
+    cv::Mat m_frame;
+
     cv::Size m_inputSize;
     std::vector<IDetector::DetectionInfo> m_allObjectDetected;
     int m_scaleSize;

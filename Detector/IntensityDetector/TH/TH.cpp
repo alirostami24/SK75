@@ -245,7 +245,8 @@ void TH::topHatCentroid(const cv::Mat &input)
     cv::medianBlur(gray, blurMat, 5);
 
 	cv::Mat topHatMat;
-    cv::morphologyEx(blurMat, topHatMat, cv::MORPH_TOPHAT, kernel_3);
+    cv::Mat kernel_ = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(20, 20));
+    cv::morphologyEx(blurMat, topHatMat, cv::MORPH_TOPHAT, kernel_);
 
     cv::Mat normMat;
     cv::normalize(topHatMat, normMat, 0, 255, cv::NORM_MINMAX);
@@ -263,6 +264,16 @@ void TH::topHatCentroid(const cv::Mat &input)
 
 	cv::Mat opening_result;
     cv::morphologyEx(dilate_result, opening_result, cv::MORPH_OPEN, kernel_5);
+
+//    /////////// test
+//    cv::imwrite("gray.jpg", gray);
+//    cv::imwrite("blurMat.jpg", blurMat);
+//    cv::imwrite("topHatMat.jpg", topHatMat);
+//    cv::imwrite("normMat.jpg", normMat);
+//    cv::imwrite("thresh_binary.jpg", thresh_binary);
+//    cv::imwrite("dilate_result.jpg", dilate_result);
+//    cv::imwrite("opening_result.jpg", opening_result);
+//    ////////
 
 	cv::Mat labels, stats, centroids;
 	int numComponents = cv::connectedComponentsWithStats(opening_result, labels, stats, centroids);
@@ -293,6 +304,7 @@ void TH::topHatCentroid(const cv::Mat &input)
 					candidateInfo.bbox = bbox;
 					candidateInfo.mediumHeat = meanObjectHeat;
 					m_candidatesInfo.push_back(candidateInfo);
+                    std::cerr << "get new condidate" << std::endl;
 				}
 			}
 
@@ -316,6 +328,7 @@ void TH::topHatCentroid(const cv::Mat &input)
 
 		m_targetCenteroid.x = bbox.x + (bbox.width / 2);
 		m_targetCenteroid.y = bbox.y + (bbox.height / 2);
+        std::cerr << "m_targetCenteroid x: " << m_targetCenteroid.x << " y: " << m_targetCenteroid.y << std::endl;
 	}
 	else
 	{

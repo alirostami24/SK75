@@ -166,14 +166,25 @@ processNewFrame(cv::Mat &frame,
     {
         detector->detect(&frame);
 
-        const auto objects =
-                detector->getAllDetectedObjects();
+//        const auto objects =
+//                detector->getAllDetectedObjects();
 
-        for (auto item : objects)
+//        for (auto item : objects)
+//        {
+//            cv::rectangle(frame,item.bbox,
+//                          cv::Scalar(0, 0, 255), 2);
+//        }
+
+        const auto objects =
+                detector->getDetectedBoundingBox();
+        std::cerr << "videoCapture x: " << objects.x << " y: " << objects.y <<
+                     " w: " << objects.width << " h: " << objects.height << std::endl;
+        if ((objects.width > 0) && (objects.height > 0))
         {
-            cv::rectangle(frame,item.bbox,
+            cv::rectangle(frame,objects,
                           cv::Scalar(0, 0, 255), 2);
         }
+        std::cerr << "#############################" << std::endl;
     }
 }
 

@@ -12,6 +12,7 @@ IntensityDetector::IntensityDetector() :
     m_isDetectorInitialized = false;
 
     m_frame = cv::Mat(m_inputSize.height, m_inputSize.width, CV_8UC3);
+
     m_detectorSearchRect = cv::Rect(0, 0, m_inputSize.width, m_inputSize.height);
 
     m_maxValidDistance = 0.05 * std::min(m_inputSize.width, m_inputSize.height);
@@ -35,16 +36,16 @@ void IntensityDetector::initialize()
 	m_isDetecorActivated = false;
 	m_isDetectorInitialized = false;
 
-	m_frame = cv::Mat(m_inputSize.height, m_inputSize.width, CV_8UC3);
+    m_frame = cv::Mat(m_inputSize.height, m_inputSize.width, CV_8UC3);
+
 	m_detectorSearchRect = cv::Rect(0, 0, m_inputSize.width, m_inputSize.height);
 
 	m_maxValidDistance = 0.05 * std::min(m_inputSize.width, m_inputSize.height);
 	m_numberOfDetectedThreshold = 3;
 
 	// Target position Estimation
-	m_isTargetPositionEstimationEnabled = false;
 	m_targetEstimationMemory.resize(3);
-	m_targetEstimationMemoryIndex = 0;
+    m_targetEstimationMemoryIndex = 0;
 	m_lastEstimatedTargetPosition = cv::Point(0, 0);
 	m_distanceTolerance = 3;
 }
@@ -66,7 +67,6 @@ bool IntensityDetector::detect(unsigned char *pData)
     {
         m_frame.data = pData;
 
-
 //        auto start = std::chrono::high_resolution_clock::now();
 
 //            // Process frame here
@@ -83,6 +83,8 @@ bool IntensityDetector::detect(unsigned char *pData)
 
         cv::Rect targetBBox = m_thDetector->getBoundingBox();
 
+        std::cerr << "targetBBox x: " << targetBBox.x << " y: " << targetBBox.y <<
+                     " w: " << targetBBox.width << " h: " << targetBBox.height << std::endl;
         if ((targetBBox.width > 0) && (targetBBox.height > 0))
         {
             IDetector::DetectionInfo result;
@@ -92,6 +94,7 @@ bool IntensityDetector::detect(unsigned char *pData)
             m_vectorDetectionResult.clear();
             m_vectorDetectionResult.push_back(result);
 			isResutvalid = checkDetectValidity();
+            std::cerr << "isResutvalid: " << isResutvalid << std::endl;
         }
 		else
 		{
@@ -308,6 +311,7 @@ bool IntensityDetector::checkDetectValidity()
         }
         else if (!newDetectionValidityInfo.empty())
         {
+            std::cerr << "newDetectionValidityInfo: size: " << newDetectionValidityInfo.size() << std::endl;
             m_allDetectionValidityInfo.clear();
             m_allDetectionValidityInfo.assign(newDetectionValidityInfo.begin(), newDetectionValidityInfo.end());
             m_validObjectRect = cv::Rect(-1, -1, -1, -1);
