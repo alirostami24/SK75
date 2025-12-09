@@ -66,6 +66,7 @@ bool IntensityDetector::detect(unsigned char *pData)
     {
         m_frame.data = pData;
 
+
 //        auto start = std::chrono::high_resolution_clock::now();
 
 //            // Process frame here
@@ -201,6 +202,9 @@ bool IntensityDetector::checkDetectValidity()
             if (m_allDetectionValidityInfo.size() > 0)
             {
                 cv::Point2d posEstimation;
+                posEstimation.x = std::numeric_limits<double>::quiet_NaN();
+                posEstimation.y = std::numeric_limits<double>::quiet_NaN();
+
                 if (m_allDetectionValidityInfo.size() == 1)
                 {
                     if ((m_isTargetPositionEstimationEnabled) && (m_targetEstimationMemoryIndex >= m_numberOfDetectedThreshold))
@@ -213,8 +217,8 @@ bool IntensityDetector::checkDetectValidity()
                                 meanTranslation.vertical   += m_targetEstimationMemory.at(i).vertical;
                             }
 
-                            posEstimation.x = meanTranslation.horizontal / m_targetEstimationMemory.size();
-                            posEstimation.y = meanTranslation.vertical / m_targetEstimationMemory.size();
+                            posEstimation.x = std::abs(meanTranslation.horizontal / m_targetEstimationMemory.size());
+                            posEstimation.y = std::abs(meanTranslation.vertical / m_targetEstimationMemory.size());
                     }
                 }
                 for (int i = 0; i < m_allDetectionValidityInfo.size(); ++i) {
@@ -311,14 +315,18 @@ bool IntensityDetector::checkDetectValidity()
 
                 if (newDetectionValidityInfo.size() == 1)
                 {
-                    m_targetEstimationMemory.at(m_targetEstimationMemoryIndex % m_targetEstimationMemory.size()).horizontal
+                    if ((m_lastEstimatedTargetPosition.x > 0) && (m_lastEstimatedTargetPosition.y > 0))
+                    {
+                        m_targetEstimationMemory.at(m_targetEstimationMemoryIndex % m_targetEstimationMemory.size()).horizontal
                             = newDetectionValidityInfo[0].bbox.x - m_lastEstimatedTargetPosition.x;
-                    m_targetEstimationMemory.at(m_targetEstimationMemoryIndex % m_targetEstimationMemory.size()).vertical
+                        m_targetEstimationMemory.at(m_targetEstimationMemoryIndex % m_targetEstimationMemory.size()).vertical
                             = newDetectionValidityInfo[0].bbox.y - m_lastEstimatedTargetPosition.y;
+
+                        m_targetEstimationMemoryIndex++;
+                    }
 
                     m_lastEstimatedTargetPosition = cv::Point(newDetectionValidityInfo[0].bbox.x, newDetectionValidityInfo[0].bbox.y);
 
-                    m_targetEstimationMemoryIndex++;
                 }
                 else
                 {
