@@ -76,6 +76,8 @@ unix {
 
     INCLUDEPATH += $$PWD/ExternalLibraries/ControlPanelSDK/include
     DEPENDPATH += $$PWD/ExternalLibraries/ControlPanelSDK/include
+
+    DEFINES += DUMMY_VIDEO
 }
 
 

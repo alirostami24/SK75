@@ -205,8 +205,8 @@ void VideoCapture::initialize()
 #endif
 
     pipeStr = "videotestsrc pattern=18 ! "
-              "video/x-raw,format=BGRA,width=720,height=576,framerate=30/1 ! "
-              "videocrop top=0 bottom=0 left=0 right=0 name=yuy2Source ! " + sink;;
+              "video/x-raw,width=720,height=576,framerate=30/1,format=BGRA ! "
+              "videocrop top=0 bottom=0 left=0 right=0 name=yuy2Source ! videoconvert ! " + sink;;
 
 #else
     pipeStr= "rtspsrc location=rtsp://192.168.1.100/ch0/stream0 latency=100 protocols=udp ! "
