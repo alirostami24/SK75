@@ -100,6 +100,7 @@ modifyBuffer(GstPad *pad,
             gst_structure_get_string(
                 structure, "format");
 
+
     if (format != "BGRA")
     {
         return GST_PAD_PROBE_OK;
@@ -175,6 +176,8 @@ processNewFrame(cv::Mat &frame,
 //                          cv::Scalar(0, 0, 255), 2);
 //        }
 
+        std::cerr << "ddddd ------- \n";
+
         const auto objects =
                 detector->getDetectedBoundingBox();
 
@@ -220,10 +223,10 @@ void VideoCapture::initialize()
 #else
     pipeStr= "rtspsrc location=rtsp://192.168.1.100/ch0/stream0 latency=100 protocols=udp ! "
              "rtpjitterbuffer latency=100 ! rtph264depay ! h264parse ! "
-             "nvv4l2decoder enable-max-performance=true ! nvvidconv ! "
-             "videoconvert ! video/x-raw,format=BGR ! "
-             "videocrop top=0 bottom=0 left=0 right=0 name=mysource ! "
-             "appsink name=mysink sync=false";
+             "nvv4l2decoder enable-max-performance=true ! nvvidconv ! video/x-raw, format=BGRx ! "
+             "videoconvert  name=mysource ! video/x-raw,format=BGRA ! "
+             "videoconvert ! "
+             "xvimagesink name=mysink sync=false";
 #endif
 
     std::cerr << "\n pipeStr: "
@@ -235,7 +238,7 @@ void VideoCapture::initialize()
 
     // To get YUY2 buffer
     m_data.source = gst_bin_get_by_name(
-                GST_BIN(m_data.pipeline), "yuy2Source");
+                GST_BIN(m_data.pipeline), "mysource");
 
     m_data.pad = gst_element_get_static_pad(
                 m_data.source, "src");
