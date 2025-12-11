@@ -63,6 +63,25 @@ modifyBuffer(GstPad *pad,
     VideoCapture *videoCapture =
             static_cast<VideoCapture*>(user_data);
 
+    std::cerr << "modifyBuffer "
+              << videoCapture->maxDuration++ << std::endl;
+
+    return GST_PAD_PROBE_OK;
+
+#ifdef DEBUG_PROCESS_TIME
+    const auto stopTime = std::chrono::system_clock::now();
+
+    const int duration = std::chrono::duration_cast<
+            std::chrono::milliseconds>(stopTime - videoCapture->startTime).count();
+
+    videoCapture->startTime = stopTime;
+
+    videoCapture->maxDuration = std::max(videoCapture->maxDuration, duration);
+
+    std::cerr << "====================== \n";
+    std::cerr << "X Duration: " << duration << " " << videoCapture->maxDuration << std::endl;
+#endif
+
     GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     buffer = gst_buffer_make_writable(buffer);
 
@@ -124,8 +143,22 @@ modifyBuffer(GstPad *pad,
     {
         cv::Mat bgraMat(size->height, size->width,
                         CV_8UC4, (void *)map.data);
+#ifdef DEBUG_PROCESS_TIME
+        const auto sTime = std::chrono::system_clock::now();
+#endif
 
         processNewFrame(bgraMat, videoCapture);
+
+#ifdef DEBUG_PROCESS_TIME
+        const auto stTime = std::chrono::system_clock::now();
+
+        const int dur = std::chrono::duration_cast<
+                std::chrono::milliseconds>(stTime - sTime).count();
+
+        std::cerr << "Duration: " << dur << std::endl;
+
+        std::cerr << std::endl;
+#endif
 
         gst_buffer_unmap(buffer, &map);
     }
@@ -167,33 +200,44 @@ processNewFrame(cv::Mat &frame,
     {
         detector->detect(&frame);
 
-//        const auto objects =
-//                detector->getAllDetectedObjects();
-
-//        for (auto item : objects)
-//        {
-//            cv::rectangle(frame,item.bbox,
-//                          cv::Scalar(0, 0, 255), 2);
-//        }
-
-        std::cerr << "ddddd ------- \n";
-
-        const auto objects =
+        const auto object =
                 detector->getDetectedBoundingBox();
 
-        if ((objects.width > 0) && (objects.height > 0))
+        const cv::Size halfSize(frame.cols / 2,
+                                frame.rows / 2);
+
+        const cv::Rect refinedRect(
+                    halfSize.width + object.x,
+                    halfSize.height + object.y,
+                    object.width, object.y);
+
+//        std::cerr << "detected BBox "
+        std::cerr << "> "
+                  << refinedRect.x << " , " << refinedRect.y << "   "
+                  << refinedRect.width << " x " << refinedRect.height << std::endl;
+
+        if ((refinedRect.width > 0) &&
+                (refinedRect.height > 0))
         {
-            cv::rectangle(frame,objects,
+            cv::rectangle(frame, refinedRect,
                           cv::Scalar(0, 0, 255), 2);
         }
     }
 }
 
 VideoCapture::
-VideoCapture() :
-    m_isDetectorInitialized(false)
+VideoCapture(const uint8_t &mode) :
+    m_isDetectorInitialized(false),
+    m_frameSize(720, 576)
 {
     m_frameCounter = 0;
+
+    startTime = std::chrono::system_clock::now();
+
+    uint8_t pipeMode = mode;
+    pipeMode = std::min(uint8_t(2), pipeMode);
+
+    m_pipeType = static_cast<Types>(pipeMode);
 
     connect(&m_detector, &Detector::sigAutoLockDetected,
             this, &VideoCapture::sigAutoLockDetected);
@@ -221,12 +265,40 @@ void VideoCapture::initialize()
               "videocrop top=0 bottom=0 left=0 right=0 name=yuy2Source ! videoconvert ! " + sink;;
 
 #else
-    pipeStr= "rtspsrc location=rtsp://192.168.1.100/ch0/stream0 latency=100 protocols=udp ! "
-             "rtpjitterbuffer latency=100 ! rtph264depay ! h264parse ! "
-             "nvv4l2decoder enable-max-performance=true ! nvvidconv ! video/x-raw, format=BGRx ! "
-             "videoconvert  name=mysource ! video/x-raw,format=BGRA ! "
-             "videoconvert ! "
-             "xvimagesink name=mysink sync=false";
+    switch (m_pipeType)
+    {
+    case Type_Detection:
+    {
+        //        pipeStr = "rtspsrc location=rtsp://192.168.1.100/ch0/stream0 latency=100 protocols=udp ! "
+        //                  "rtpjitterbuffer latency=100 ! rtph264depay ! h264parse ! "
+        //                  "nvv4l2decoder enable-max-performance=true ! nvvidconv ! "
+        //                  "video/x-raw, format=BGRx ! videoconvert  name=mysource ! fakesink";
+
+
+        pipeStr = "udpsrc port=20000 ! application/x-rtp,media=video,encoding-name=H264,payload=96 ! "
+                  "rtph264depay ! h264parse ! decodebin ! nvvidconv ! video/x-raw, fformat=RGBA ! "
+                  "videoconvert name=mysource ! video/x-raw,format=BGRA ! fakesink";
+
+        break;
+    }
+    case Type_Render:
+    {
+        // pipeStr = "gst-launch-1.0 rtspsrc location=rtsp://192.168.1.100/ch0/stream0 ! "
+        //           "decodebin name=mysource ! autovideosink sync=false";
+
+        pipeStr = "udpsrc port=20001 ! application/x-rtp,media=video,encoding-name=H264,payload=96 ! "
+                  "rtph264depay ! h264parse ! decodebin ! autovideosink sync=false";
+        break;
+    }
+    case Type_Feeder:
+    {
+        pipeStr = "rtspsrc location=rtsp://192.168.1.100/ch0/stream0 "
+                  "latency=100 protocols=udp ! tee name=t ! "
+                  "queue ! udpsink host=127.0.0.1 port=20000 t. ! "
+                  "queue ! udpsink host=127.0.0.1 port=20001";
+        break;
+    }
+    }
 #endif
 
     std::cerr << "\n pipeStr: "
@@ -237,28 +309,32 @@ void VideoCapture::initialize()
                 pipeStr.toLatin1().data(), NULL);
 
     // To get YUY2 buffer
-    m_data.source = gst_bin_get_by_name(
-                GST_BIN(m_data.pipeline), "mysource");
+    if (m_pipeType == Type_Detection)
+    {
+        m_data.source = gst_bin_get_by_name(
+                    GST_BIN(m_data.pipeline), "mysource");
 
-    m_data.pad = gst_element_get_static_pad(
-                m_data.source, "src");
+        m_data.pad = gst_element_get_static_pad(
+                    m_data.source, "src");
 
-    gst_pad_add_probe(m_data.pad, GST_PAD_PROBE_TYPE_BUFFER,
-                      modifyBuffer,
-                      reinterpret_cast<gpointer>(this), NULL);
+        gst_pad_add_probe(m_data.pad, GST_PAD_PROBE_TYPE_BUFFER,
+                          modifyBuffer,
+                          reinterpret_cast<gpointer>(this), NULL);
 
-    gst_object_unref(m_data.pad);
+        gst_object_unref(m_data.pad);
 
-    m_data.bus = gst_pipeline_get_bus(GST_PIPELINE(m_data.pipeline));
+        m_data.bus = gst_pipeline_get_bus(GST_PIPELINE(m_data.pipeline));
 
-    gst_bus_add_watch(m_data.bus, (GstBusFunc)bus_message, this);
+        gst_bus_add_watch(m_data.bus, (GstBusFunc)bus_message, this);
 
-    gst_object_unref(m_data.bus);
+        gst_object_unref(m_data.bus);
+    }
 }
 
 void VideoCapture::start()
 {
-    if (m_data.pipeline) {
+    if (m_data.pipeline)
+    {
         gst_element_set_state(GST_ELEMENT(m_data.pipeline), GST_STATE_PLAYING);
     }
 }

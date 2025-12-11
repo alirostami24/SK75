@@ -28,7 +28,9 @@ private:
 
     SerialController m_cameraSerialController;
 
-    VideoCapture m_videoCapture;
+    VideoCapture m_videoCaptureDetection;
+    VideoCapture m_videoCaptureRender;
+    VideoCapture m_videoCaptureFeeder;
 
     QByteArray m_panelSerialBuffer;
     QByteArray m_cameraSerialBuffer;

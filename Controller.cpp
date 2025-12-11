@@ -14,7 +14,10 @@ Controller() :
     m_panelLengthByteIndex(6),
     m_panelMinimumLength(11),
     m_footerOffset(-1),
-    m_feedbackSize(32)
+    m_feedbackSize(32),
+    m_videoCaptureDetection(0),
+    m_videoCaptureRender(1),
+    m_videoCaptureFeeder(2)
 {
     initialize();
     initializeConnections();
@@ -104,9 +107,17 @@ initialize()
     // ======================================
     //      Streaming & Detector
     // ======================================
-    m_videoCapture.initialize();
-    m_videoCapture.start();
-    m_videoCapture.enableDetecting(true);
+//    m_videoCaptureDetection.initialize();
+//    m_videoCaptureDetection.start();
+//    m_videoCaptureDetection.enableDetecting(true);
+
+    m_videoCaptureFeeder.initialize();
+    m_videoCaptureFeeder.start();
+    m_videoCaptureFeeder.enableDetecting(false);
+
+    m_videoCaptureRender.initialize();
+    m_videoCaptureRender.start();
+    m_videoCaptureRender.enableDetecting(false);
 }
 
 void Controller::
@@ -120,7 +131,7 @@ initializeConnections()
             &SerialController::sigNewDataReceived,
             this, &Controller::sltCameraNewDataRecieved);
 
-    connect(&m_videoCapture, &VideoCapture::
+    connect(&m_videoCaptureDetection, &VideoCapture::
             sigAutoLockDetected,this,
             &Controller::sltAutoLockDetected);
 }
@@ -227,6 +238,7 @@ analyzePanelPacket()
         CommandCreator::calculateChecksum(
                     packet, calculatedChecksum1,
                     calculatedChecksum2);
+
         if ((checksum1 != calculatedChecksum1) ||
                 (checksum2 != calculatedChecksum2))
         {
@@ -482,11 +494,11 @@ interpretCameraPacket(
     const bool trackingState =
             (byte2 & 0x02) >> 1;
 
-    if (trackingState == false)
-    {
-        m_videoCapture.enableDetecting(true);
-        m_videoCapture.enableAutoLock(false);
-    }
+//    if (trackingState == false)
+//    {
+//        m_videoCaptureDetection.enableDetecting(true);
+//        m_videoCaptureDetection.enableAutoLock(false);
+//    }
 }
 
 uint8_t Controller::
@@ -509,15 +521,15 @@ processStartAutoTrack(
 {
     Q_UNUSED(rect);
 
-    m_videoCapture.
+    m_videoCaptureDetection.
             enableAutoLock(true);
 }
 
 void Controller::
 processStopTrack()
 {
-    m_videoCapture.enableDetecting(true);
-    m_videoCapture.enableAutoLock(false);
+    m_videoCaptureDetection.enableDetecting(true);
+    m_videoCaptureDetection.enableAutoLock(false);
 
     stopCameraTrack();
 }
@@ -648,18 +660,21 @@ sltCameraNewDataRecieved(
 void Controller::
 sltAutoLockDetected(const QRectF &bbox)
 {
-    m_videoCapture.enableDetecting(false);
+    m_videoCaptureDetection.enableDetecting(false);
 
     const cv::Size frameSize =
-            m_videoCapture.frameSize();
+            m_videoCaptureDetection.frameSize();
 
     const QPointF centerPos = bbox.center();
 
     const QPointF realValue(
                 centerPos.x() -
                 (frameSize.width / 2),
-                centerPos.y() -
-                (frameSize.height / 2));
+                (frameSize.height / 2) -
+                centerPos.y());
+
+    qCritical() << "startTrack" << realValue;
+
 
     startCameraTrack(realValue.x(),
                      realValue.y());

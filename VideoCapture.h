@@ -58,7 +58,9 @@ private:
             gpointer user_data);
 
 public:
-    explicit VideoCapture();
+    explicit VideoCapture(
+            const uint8_t &mode);
+
     ~VideoCapture();
 
     void initialize();
@@ -75,13 +77,26 @@ public:
     cv::Size frameSize() const;
 
 private:
+    enum Types
+    {
+        Type_Detection,
+        Type_Render,
+        Type_Feeder,
+    };
+
     Detector m_detector;
 
     cv::Size m_frameSize;
     int m_frameCounter;
 
+    Types m_pipeType;
+
     static void processNewFrame(cv::Mat &frame,
             VideoCapture *videoCapture);
+
+    int maxDuration = std::numeric_limits<int>::min();
+
+    std::chrono::system_clock::time_point startTime;
 
 Q_SIGNALS:
     void sigNewFrameReceived();
