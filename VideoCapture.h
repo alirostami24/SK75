@@ -9,6 +9,7 @@
 #include <QObject>
 #include <QCalendar>
 #include <QDateTime>
+#include <QApplication>
 
 #include "gst/gst.h"
 #include <gst/app/gstappsink.h>

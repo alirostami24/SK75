@@ -7,6 +7,9 @@ const uint8_t SDK::gFooter2 = 0x45;
 
 Controller::
 Controller() :
+    m_videoCaptureDetection(0),
+    m_videoCaptureRender(1),
+    m_videoCaptureFeeder(2),
     m_panelSourceID_ByteIndex(2),
     m_panelDestinationID_ByteIndex(3),
     m_panelModuleID_ByteIndex(4),
@@ -14,10 +17,7 @@ Controller() :
     m_panelLengthByteIndex(6),
     m_panelMinimumLength(11),
     m_footerOffset(-1),
-    m_feedbackSize(32),
-    m_videoCaptureDetection(0),
-    m_videoCaptureRender(1),
-    m_videoCaptureFeeder(2)
+    m_feedbackSize(32)
 {
     initialize();
     initializeConnections();
@@ -107,6 +107,10 @@ initialize()
     // ======================================
     //      Streaming & Detector
     // ======================================
+//    m_videoCaptureRender.initialize();
+//    m_videoCaptureRender.start();
+//    m_videoCaptureRender.enableDetecting(false);
+
     m_videoCaptureDetection.initialize();
     m_videoCaptureDetection.start();
     m_videoCaptureDetection.enableDetecting(true);
@@ -115,9 +119,6 @@ initialize()
     m_videoCaptureFeeder.start();
     m_videoCaptureFeeder.enableDetecting(false);
 
-//    m_videoCaptureRender.initialize();
-//    m_videoCaptureRender.start();
-//    m_videoCaptureRender.enableDetecting(false);
 }
 
 void Controller::

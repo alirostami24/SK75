@@ -147,6 +147,14 @@ modifyBuffer(GstPad *pad,
 
         processNewFrame(bgraMat, videoCapture);
 
+
+        const QString path = QApplication::applicationDirPath() + "/detection.bmp";
+
+        std::cerr << path.toStdString() << std::endl;
+
+
+        cv::imwrite(path.toStdString(), bgraMat);
+
 #ifdef DEBUG_PROCESS_TIME
         const auto stTime = std::chrono::system_clock::now();
 
@@ -201,14 +209,14 @@ processNewFrame(cv::Mat &frame,
         const auto object = detector->
                 getDetectedBoundingBox();
 
-//        const cv::Size halfSize(frame.cols / 2,
-//                                frame.rows / 2);
+        //        const cv::Size halfSize(frame.cols / 2,
+        //                                frame.rows / 2);
 
-//        const cv::Rect refinedRect(
-//                    halfSize.width + object.x,
-//                    halfSize.height + object.y,
-//                    object.width,
-//                    object.height);
+        //        const cv::Rect refinedRect(
+        //                    halfSize.width + object.x,
+        //                    halfSize.height + object.y,
+        //                    object.width,
+        //                    object.height);
 
 
 
@@ -249,12 +257,13 @@ void VideoCapture::initialize()
 {
     QString pipeStr;
 
-#if defined(DUMMY_VIDEO)
     QString sink = "xvimagesink";
 
 #if defined(_WIN64) || defined(_WIN32)
     sink = "autovideosink";
 #endif
+
+#if defined(DUMMY_VIDEO)
 
     pipeStr = "videotestsrc pattern=18 ! "
               "video/x-raw,width=720,height=576,framerate=30/1,format=BGRA ! "
@@ -271,9 +280,17 @@ void VideoCapture::initialize()
         //                  "video/x-raw, format=BGRx ! videoconvert  name=mysource ! fakesink";
 
 
+#ifdef _WIN32
+        pipeStr = "udpsrc port=20000 caps=\"application/x-rtp,media=(string)video,"
+                  "clock-rate=(int)90000,encoding-name=(string)H264, payload=(int)96\" ! "
+                  "rtph264depay ! decodebin ! videoconvert name=mysource ! "
+                  "video/x-raw,format=BGRA ! videoconvert ! fakesink";
+#elif defined(__linux)
         pipeStr = "udpsrc port=20000 ! application/x-rtp,media=video,encoding-name=H264,payload=96 ! "
                   "rtph264depay ! h264parse ! decodebin ! nvvidconv ! video/x-raw, fformat=RGBA ! "
                   "videoconvert name=mysource ! video/x-raw,format=BGRA ! fakesink";
+#endif
+
 
         break;
     }
@@ -282,16 +299,27 @@ void VideoCapture::initialize()
         // pipeStr = "gst-launch-1.0 rtspsrc location=rtsp://192.168.1.100/ch0/stream0 ! "
         //           "decodebin name=mysource ! autovideosink sync=false";
 
-        pipeStr = "udpsrc port=20001 ! application/x-rtp,media=video,encoding-name=H264,payload=96 ! "
-                  "rtph264depay ! h264parse ! decodebin ! autovideosink sync=false";
+        pipeStr = "udpsrc port=20001 caps=\"application/x-rtp,media=(string)video,"
+                  "clock-rate=(int)90000,encoding-name=(string)H264, payload=(int)96\" ! "
+                  "rtph264depay ! decodebin ! videoconvert ! autovideosink sync=false";
         break;
     }
     case Type_Feeder:
     {
+
+#ifdef _WIN32
+        pipeStr = "videotestsrc pattern=black is-live=1 ! "
+                  "video/x-raw,format=YUY2,width=720,height=576,framerate=30/1 ! "
+                  "videoconvert ! x264enc ! h264parse ! rtph264pay ! tee name=t ! "
+                  "queue ! udpsink host=127.0.0.1 port=20000 t. ! queue ! "
+                  "udpsink host=127.0.0.1 port=20001";
+#elif defined(__linux)
         pipeStr = "rtspsrc location=rtsp://192.168.1.100/ch0/stream0 "
                   "latency=100 protocols=udp ! tee name=t ! "
                   "queue ! udpsink host=127.0.0.1 port=20000 t. ! "
                   "queue ! udpsink host=127.0.0.1 port=20001";
+#endif
+
         break;
     }
     }
