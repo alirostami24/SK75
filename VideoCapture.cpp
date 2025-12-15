@@ -63,10 +63,6 @@ modifyBuffer(GstPad *pad,
     VideoCapture *videoCapture =
             static_cast<VideoCapture*>(user_data);
 
-    std::cerr << "modifyBuffer "
-              << videoCapture->maxDuration++ << std::endl;
-
-    return GST_PAD_PROBE_OK;
 
 #ifdef DEBUG_PROCESS_TIME
     const auto stopTime = std::chrono::system_clock::now();
@@ -119,7 +115,6 @@ modifyBuffer(GstPad *pad,
             gst_structure_get_string(
                 structure, "format");
 
-
     if (format != "BGRA")
     {
         return GST_PAD_PROBE_OK;
@@ -146,6 +141,9 @@ modifyBuffer(GstPad *pad,
 #ifdef DEBUG_PROCESS_TIME
         const auto sTime = std::chrono::system_clock::now();
 #endif
+
+        bgraMat.setTo(0);
+        cv::circle(bgraMat, cv::Point(200,250), 3, cv::Scalar(255,255,255), -1);
 
         processNewFrame(bgraMat, videoCapture);
 
@@ -200,26 +198,24 @@ processNewFrame(cv::Mat &frame,
     {
         detector->detect(&frame);
 
-        const auto object =
-                detector->getDetectedBoundingBox();
+        const auto object = detector->
+                getDetectedBoundingBox();
 
-        const cv::Size halfSize(frame.cols / 2,
-                                frame.rows / 2);
+//        const cv::Size halfSize(frame.cols / 2,
+//                                frame.rows / 2);
 
-        const cv::Rect refinedRect(
-                    halfSize.width + object.x,
-                    halfSize.height + object.y,
-                    object.width, object.y);
+//        const cv::Rect refinedRect(
+//                    halfSize.width + object.x,
+//                    halfSize.height + object.y,
+//                    object.width,
+//                    object.height);
 
-//        std::cerr << "detected BBox "
-        std::cerr << "> "
-                  << refinedRect.x << " , " << refinedRect.y << "   "
-                  << refinedRect.width << " x " << refinedRect.height << std::endl;
 
-        if ((refinedRect.width > 0) &&
-                (refinedRect.height > 0))
+
+        if ((object.width > 0) &&
+                (object.height > 0))
         {
-            cv::rectangle(frame, refinedRect,
+            cv::rectangle(frame, object,
                           cv::Scalar(0, 0, 255), 2);
         }
     }

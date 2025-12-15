@@ -46,7 +46,7 @@ initialize()
     // ======================================
     isConnected = m_panelSerialController.
             openConnection(
-                "ttyUSB0", 9600, errorCode);
+                "ttyTHS1", 9600, errorCode);
 
     std::cerr << "===================================" << std::endl;
     std::cerr << "Panel Serial Port Name: " <<
@@ -79,7 +79,7 @@ initialize()
     // ======================================
     isConnected = m_cameraSerialController.
             openConnection(
-                "ttyTHS0", 115200, errorCode);
+                "ttyTHS2", 115200, errorCode);
 
     std::cerr << "===================================" << std::endl;
     std::cerr << "Camera Serial Port Name: " <<
@@ -107,17 +107,17 @@ initialize()
     // ======================================
     //      Streaming & Detector
     // ======================================
-//    m_videoCaptureDetection.initialize();
-//    m_videoCaptureDetection.start();
-//    m_videoCaptureDetection.enableDetecting(true);
+    m_videoCaptureDetection.initialize();
+    m_videoCaptureDetection.start();
+    m_videoCaptureDetection.enableDetecting(true);
 
     m_videoCaptureFeeder.initialize();
     m_videoCaptureFeeder.start();
     m_videoCaptureFeeder.enableDetecting(false);
 
-    m_videoCaptureRender.initialize();
-    m_videoCaptureRender.start();
-    m_videoCaptureRender.enableDetecting(false);
+//    m_videoCaptureRender.initialize();
+//    m_videoCaptureRender.start();
+//    m_videoCaptureRender.enableDetecting(false);
 }
 
 void Controller::
@@ -494,11 +494,11 @@ interpretCameraPacket(
     const bool trackingState =
             (byte2 & 0x02) >> 1;
 
-//    if (trackingState == false)
-//    {
-//        m_videoCaptureDetection.enableDetecting(true);
-//        m_videoCaptureDetection.enableAutoLock(false);
-//    }
+    if (trackingState == false)
+    {
+        m_videoCaptureDetection.enableDetecting(true);
+        m_videoCaptureDetection.enableAutoLock(false);
+    }
 }
 
 uint8_t Controller::
@@ -519,6 +519,8 @@ void Controller::
 processStartAutoTrack(
         const QRectF &rect)
 {
+    qCritical() << "process Start Auto Track " << rect;
+
     Q_UNUSED(rect);
 
     m_videoCaptureDetection.
@@ -528,6 +530,8 @@ processStartAutoTrack(
 void Controller::
 processStopTrack()
 {
+    qCritical() << "process Stop Track ";
+
     m_videoCaptureDetection.enableDetecting(true);
     m_videoCaptureDetection.enableAutoLock(false);
 
@@ -674,7 +678,6 @@ sltAutoLockDetected(const QRectF &bbox)
                 centerPos.y());
 
     qCritical() << "startTrack" << realValue;
-
 
     startCameraTrack(realValue.x(),
                      realValue.y());
