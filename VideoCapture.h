@@ -73,7 +73,9 @@ public:
             const QSize& resolution);
 
     void enableDetecting(const bool &state);
+    bool isDetecting();
     void enableAutoLock(const bool &state);
+    bool isAutoLock();
 
     cv::Size frameSize() const;
 

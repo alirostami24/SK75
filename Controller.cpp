@@ -103,13 +103,19 @@ initialize()
         std::cerr << "Error String: "
                   << errorString.toStdString() << std::endl;
     }
+    else
+    {
+        QTimer::singleShot(5000, this,
+                           &Controller::
+                           cameraAutoCorrection);
+    }
 
     // ======================================
     //      Streaming & Detector
     // ======================================
-//    m_videoCaptureRender.initialize();
-//    m_videoCaptureRender.start();
-//    m_videoCaptureRender.enableDetecting(false);
+    m_videoCaptureRender.initialize();
+    m_videoCaptureRender.start();
+    m_videoCaptureRender.enableDetecting(false);
 
     m_videoCaptureDetection.initialize();
     m_videoCaptureDetection.start();
@@ -296,10 +302,10 @@ interpretProcessorPacket(
     {
     case ProcessorCommand_StartAutoLock:
     {
-        if (packetSize != m_panelMinimumLength + 8)
-        {
-            break;
-        }
+//        if (packetSize != m_panelMinimumLength + 8)
+//        {
+//            break;
+//        }
 
         int16_t xPosRatio = 0x0000;
         xPosRatio |= toInt16(packet.at(7)) & 0x00FF;
@@ -309,10 +315,10 @@ interpretProcessorPacket(
                 xPosRatio >= -1000 &&
                 xPosRatio <= 1000;
 
-        if (isX_PosValid == false)
-        {
-            break;
-        }
+//        if (isX_PosValid == false)
+//        {
+//            break;
+//        }
 
         int16_t yPosRatio = 0x0000;
         yPosRatio |= toInt16(packet.at(9)) & 0x00FF;
@@ -322,10 +328,10 @@ interpretProcessorPacket(
                 yPosRatio >= -1000 &&
                 yPosRatio <= 1000;
 
-        if (isY_PosValid == false)
-        {
-            break;
-        }
+//        if (isY_PosValid == false)
+//        {
+//            break;
+//        }
 
         const QPointF posRatio(
                     xPosRatio / 1000.0,
@@ -335,19 +341,19 @@ interpretProcessorPacket(
         width |= toUInt16(packet.at(11)) & 0x00FF;
         width |= (toUInt16(packet.at(12)) & 0x00FF) << 8;
 
-        if (width > 1000)
-        {
-            break;
-        }
+//        if (width > 1000)
+//        {
+//            break;
+//        }
 
         uint16_t height = 0x0000;
         height |= toUInt16(packet.at(13)) & 0x00FF;
         height |= (toUInt16(packet.at(14)) & 0x00FF) << 8;
 
-        if (height > 1000)
-        {
-            break;
-        }
+//        if (height > 1000)
+//        {
+//            break;
+//        }
 
         const QRectF rectangle(xPosRatio / 1000.0,
                                yPosRatio / 1000.0,
@@ -495,7 +501,17 @@ interpretCameraPacket(
     const bool trackingState =
             (byte2 & 0x02) >> 1;
 
-    if (trackingState == false)
+    const bool isDetecting =
+            m_videoCaptureDetection.
+            isDetecting();
+
+    const bool isAutoLock =
+            m_videoCaptureDetection.
+            isAutoLock();
+
+    if (trackingState == false &&
+            isDetecting == false &&
+            isAutoLock == true)
     {
         m_videoCaptureDetection.enableDetecting(true);
         m_videoCaptureDetection.enableAutoLock(false);
@@ -533,10 +549,42 @@ processStopTrack()
 {
     qCritical() << "process Stop Track ";
 
-    m_videoCaptureDetection.enableDetecting(true);
-    m_videoCaptureDetection.enableAutoLock(false);
+    m_videoCaptureDetection.
+            enableDetecting(true);
+
+    m_videoCaptureDetection.
+            enableAutoLock(false);
 
     stopCameraTrack();
+
+    QTimer::singleShot(1000, this,
+                       &Controller::
+                       cameraGotoCenter);
+}
+
+void Controller::
+cameraGotoCenter()
+{
+    QByteArray packet(16, char(0x00));
+    packet[ 0] = m_cameraCommandHeader.at(0);
+    packet[ 1] = m_cameraCommandHeader.at(1);
+    packet[ 2] = 0x2b;
+    packet[ 3] = 0x00;
+    packet[ 4] = 0x00;
+    packet[ 5] = 0x00;
+    packet[ 6] = 0x00;
+    packet[ 7] = 0x00;
+    packet[ 8] = 0x00;
+    packet[ 9] = 0x00;
+    packet[10] = 0x00;
+    packet[11] = 0x00;
+    packet[12] = 0x00;
+    packet[13] = 0x00;
+    packet[14] = 0x00;
+    packet[15] = calculateChecksum(packet);
+
+    m_cameraSerialController.
+            writeData(packet);
 }
 
 void Controller::
@@ -585,6 +633,36 @@ stopCameraTrack()
     packet[13] = 0x00;
     packet[14] = 0x00;
     packet[15] = calculateChecksum(packet);
+
+    m_cameraSerialController.
+            writeData(packet);
+}
+
+void Controller::
+cameraAutoCorrection()
+{
+    QByteArray packet(16, char(0x00));
+
+    packet[ 0] = m_cameraCommandHeader.at(0);
+    packet[ 1] = m_cameraCommandHeader.at(1);
+    packet[ 2] = 0x70;
+    packet[ 3] = 0x00;
+    packet[ 4] = 0x00;
+    packet[ 5] = 0x00;
+    packet[ 6] = 0x00;
+    packet[ 7] = 0x00;
+    packet[ 8] = 0x00;
+    packet[ 9] = 0x00;
+    packet[10] = 0x00;
+    packet[11] = 0x00;
+    packet[12] = 0x00;
+    packet[13] = 0x00;
+    packet[14] = 0x00;
+    packet[15] = calculateChecksum(packet);
+
+    std::cerr << "cameraAutoCorrection"
+              << packet.toHex(' ').toStdString()
+              << std::endl;
 
     m_cameraSerialController.
             writeData(packet);

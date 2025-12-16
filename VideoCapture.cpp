@@ -138,22 +138,21 @@ modifyBuffer(GstPad *pad,
     {
         cv::Mat bgraMat(size->height, size->width,
                         CV_8UC4, (void *)map.data);
+
 #ifdef DEBUG_PROCESS_TIME
         const auto sTime = std::chrono::system_clock::now();
 #endif
 
         bgraMat.setTo(0);
-        cv::circle(bgraMat, cv::Point(200,250), 3, cv::Scalar(255,255,255), -1);
+
+        cv::circle(bgraMat, cv::Point(200, 180), 5, cv::Scalar(255, 255, 255), -1);
 
         processNewFrame(bgraMat, videoCapture);
 
+        const std::string path = QApplication::applicationDirPath().toStdString() + "/bgraMat.bmp";
 
-        const QString path = QApplication::applicationDirPath() + "/detection.bmp";
+        cv::imwrite(path, bgraMat);
 
-        std::cerr << path.toStdString() << std::endl;
-
-
-        cv::imwrite(path.toStdString(), bgraMat);
 
 #ifdef DEBUG_PROCESS_TIME
         const auto stTime = std::chrono::system_clock::now();
@@ -184,10 +183,20 @@ enableDetecting(const bool &state)
     m_detector.enableDetecting(state);
 }
 
+bool VideoCapture::isDetecting()
+{
+    return m_detector.isDetectorActivated();
+}
+
 void VideoCapture::
 enableAutoLock(const bool &state)
 {
     m_detector.enableAutoLock(state);
+}
+
+bool VideoCapture::isAutoLock()
+{
+    return m_detector.isAutoLockActivated();
 }
 
 cv::Size VideoCapture::
@@ -290,8 +299,6 @@ void VideoCapture::initialize()
                   "rtph264depay ! h264parse ! decodebin ! nvvidconv ! video/x-raw, fformat=RGBA ! "
                   "videoconvert name=mysource ! video/x-raw,format=BGRA ! fakesink";
 #endif
-
-
         break;
     }
     case Type_Render:
@@ -302,6 +309,7 @@ void VideoCapture::initialize()
         pipeStr = "udpsrc port=20001 caps=\"application/x-rtp,media=(string)video,"
                   "clock-rate=(int)90000,encoding-name=(string)H264, payload=(int)96\" ! "
                   "rtph264depay ! decodebin ! videoconvert ! autovideosink sync=false";
+
         break;
     }
     case Type_Feeder:

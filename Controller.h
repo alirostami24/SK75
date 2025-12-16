@@ -74,10 +74,14 @@ private:
 
     void processStopTrack();
 
+    void cameraGotoCenter();
+
     void startCameraTrack(const int16_t &xPos,
                           const int16_t &yPos);
 
     void stopCameraTrack();
+
+    void cameraAutoCorrection();
 
     void changeCameraOSD_Visibility(
             const bool &state);

@@ -29,6 +29,7 @@ public:
     std::string getName();
     void detect(cv::Mat *input);
     bool isDetectorActivated();
+    bool isAutoLockActivated();
     void setInputSize(const cv::Size& inputSize);
     cv::Rect getDetectedBoundingBox(const QPointF &position = QPointF(0, 0));
     std::vector<IDetector::DetectionInfo> getAllDetectedObjects();
