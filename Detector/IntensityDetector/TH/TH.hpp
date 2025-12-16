@@ -77,8 +77,8 @@ class TH {
     cv::Rect m_tempTargetBBox;
     cv::Rect m_targetBBox;
 
-    cv::Mat kernel_5;
-    cv::Mat kernel_3;
+    cv::Mat kernel_15;
+    cv::Mat kernel_10;
 
     cv::Point2d m_targetCenteroid;
 
@@ -87,6 +87,8 @@ class TH {
 
 	std::vector< CandidateInfo > m_candidatesInfo;
 	double m_minValidHeat;
+
+	double m_minIntensityDifference;
 };
 
 #endif				//TH_H

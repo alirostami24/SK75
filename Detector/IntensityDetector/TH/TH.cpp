@@ -4,7 +4,8 @@ TH::TH()
 {
     m_isTHActivated = false;
     m_isTHInitialized = false;
-	m_minValidHeat = 50;
+	m_minValidHeat = 40;
+	m_minIntensityDifference = 100;
 }
 
 TH::~TH()
@@ -24,8 +25,8 @@ void TH::init(cv::Size inputSize)
 
     m_inputSize = inputSize;
 
-    kernel_5 = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
-    kernel_3 = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+    kernel_15 = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(15, 15));
+    kernel_10 = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10));
 
     m_validMarginRatio = 0.5;
 
@@ -246,7 +247,7 @@ void TH::topHatCentroid(const cv::Mat &input)
 
 	cv::Mat topHatMat;
     //cv::Mat kernel_ = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(20, 20));
-    cv::morphologyEx(blurMat, topHatMat, cv::MORPH_TOPHAT, kernel_3);
+    cv::morphologyEx(blurMat, topHatMat, cv::MORPH_TOPHAT, kernel_10);
 
     cv::Mat normMat;
     cv::normalize(topHatMat, normMat, 0, 255, cv::NORM_MINMAX);
@@ -260,10 +261,10 @@ void TH::topHatCentroid(const cv::Mat &input)
     cv::threshold(normMat, thresh_binary, 200, 255, cv::THRESH_BINARY);
 
     cv::Mat dilate_result;
-    cv::dilate(thresh_binary, dilate_result, kernel_5, cv::Point(-1, -1), 1);
+    cv::dilate(thresh_binary, dilate_result, kernel_15, cv::Point(-1, -1), 1);
 
 	cv::Mat opening_result;
-    cv::morphologyEx(dilate_result, opening_result, cv::MORPH_OPEN, kernel_5);
+    cv::morphologyEx(dilate_result, opening_result, cv::MORPH_OPEN, kernel_15);
 
 //    /////////// test
 //    cv::imwrite("gray.jpg", gray);
@@ -285,7 +286,7 @@ void TH::topHatCentroid(const cv::Mat &input)
 	//cv::Mat mask = cv::Mat::zeros(opening_result.size(), opening_result.type());
 	m_candidatesInfo.clear();
 	CandidateInfo candidateInfo;
-	cv::Mat grayObject;
+	cv::Mat normObject;
 	double meanObjectHeat;
 	for (int i = 1; i < numComponents; ++i) {
 		if (stats.at<int>(i, 4) < imageArea * 0.5)
@@ -297,12 +298,15 @@ void TH::topHatCentroid(const cv::Mat &input)
 				((opening_result.rows - (bbox.y + bbox.height)) > hValidMargin)
 				)
 			{
-				grayObject = gray(bbox).clone();
-				meanObjectHeat = cv::mean(grayObject)[0];
-				if (meanObjectHeat > m_minValidHeat)
+				normObject = normMat(bbox).clone();
+				double minVal, maxVal;
+				cv::minMaxLoc(normObject, &minVal, &maxVal);
+				double maxIntensityDifference = maxVal - minVal;
+				//meanObjectHeat = cv::mean(grayObject)[0];
+				//if (meanObjectHeat > m_minValidHeat)
 				{
 					candidateInfo.bbox = bbox;
-					candidateInfo.mediumHeat = meanObjectHeat;
+					candidateInfo.mediumHeat = maxIntensityDifference;
 					m_candidatesInfo.push_back(candidateInfo);
 				}
 			}
