@@ -143,9 +143,7 @@ modifyBuffer(GstPad *pad,
         const auto sTime = std::chrono::system_clock::now();
 #endif
 
-        bgraMat.setTo(0);
 
-        cv::circle(bgraMat, cv::Point(200, 180), 5, cv::Scalar(255, 255, 255), -1);
 
         processNewFrame(bgraMat, videoCapture);
 
